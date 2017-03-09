@@ -9,6 +9,7 @@
 
         --subset        A bed file with positions to include, default is
                         to include everything
+        --rs            Include SNP ID
         --min-gt        Minimum genotyping rate (0)
         --impute        Replace missing genotypes with the mean across
                         the entire sample
@@ -28,6 +29,7 @@ parser.add_argument('--output')
 parser.add_argument('--subset')
 parser.add_argument('--min-gt', default=0.0, type=float)
 parser.add_argument('--impute', default=False, action='store_true')
+parser.add_argument('--rs', default=False, action='store_true')
 parser.add_argument('input')
 args = parser.parse_args()
 
@@ -46,6 +48,7 @@ with open(args.output, 'wb') as out:
     for rec in rdr:
         if (positions is not None) and ((rec.CHROM, str(rec.POS)) not in positions):
             continue
+        rs = rec.ID
         gts = []
         missed = 0
         sum_gt = 0
@@ -64,4 +67,6 @@ with open(args.output, 'wb') as out:
             mean_gt = sum_gt / float(len(gts) - missed)
             gts = [g if g != 'NA' else mean_gt for g in gts]
         out.write(rec.CHROM + '\t' + str(rec.POS))
+        if args.rs:
+            out.write('\t' + rs)
         out.write('\t' + '\t'.join(str(g) for g in gts) + '\n')

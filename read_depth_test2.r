@@ -33,6 +33,15 @@ same_gene = sapply(1:n_genes,
 if(!all(same_gene))
     stop('Gene names do not match')
 
+# Get the weights - based on the number of aligned reads. Divide the
+# count of aligned reads by the count of aligned reads million to get
+# the number of aligned reads in millions. This only has to be done
+# once per pool.
+wts = sapply(data_sets, function(x) {
+             r = which(x$count > 10)[1]
+             x[r, 'count'] / x[r, 'count (CPM)']
+                    })
+
 cat('contig\tstart\tend\tgene\tp\teffect\trpkm1\trpkm2\n', file=stdout())
 for(i in 1:n_genes) {
     contig = data_sets[[1]][i, 'chrom']
@@ -44,23 +53,23 @@ for(i in 1:n_genes) {
     cpm = sapply(data_sets, function(x) x[i, 'count (CPM)'])
     rpkm = sapply(data_sets, function(x) x[i, 'RPKM'])
 
-    if(sum(raw_counts[trtmnt == 'a'] != 0) > 0 &&
+    # A previous version of this script had an "and" instead of an
+    # "or", but I think it's okay to do a test if one treatment has
+    # no reads, as long as the other one has reads.
+    if(sum(raw_counts[trtmnt == 'a'] != 0) > 0 ||
        sum(raw_counts[trtmnt == 'b'] != 0) > 0) {
-        trts = trtmnt[raw_counts > 0]
-        cpm = cpm[raw_counts > 0]
-        rpkm = rpkm[raw_counts > 0]
-        raw_counts = raw_counts[raw_counts > 0]
-        wts = raw_counts / cpm
-
-        test_results = lm(rpkm ~ trts, weights=wts)
-        effect = coefficients(test_results)['trtsb']
-        p = coefficients(summary(test_results))['trtsb', 'Pr(>|t|)']
+        # In a previous version of this script, I eliminated replicates
+        # with zero reads. I have no idea why I did that - it seems
+        # silly.
+        test_results = lm(rpkm ~ trtmnt, weights=wts)
+        effect = coefficients(test_results)['trtmntb']
+        p = coefficients(summary(test_results))['trtmntb', 'Pr(>|t|)']
     } else {
         p = NaN
         effect = NaN
     }
     cat(paste(contig, start_pos, end_pos, gene, p, effect, sep='\t'),
-        '\t', paste(round(rpkm[trts == 'a'], 3), collapse=','),
-        '\t', paste(round(rpkm[trts == 'b'], 3), collapse=','),
+        '\t', paste(round(rpkm[trtmnt == 'a'], 3), collapse=','),
+        '\t', paste(round(rpkm[trtmnt == 'b'], 3), collapse=','),
         '\n', sep='', file=stdout())
 }

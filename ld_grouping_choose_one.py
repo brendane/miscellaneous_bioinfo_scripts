@@ -28,8 +28,12 @@ choices = {}
 groupings = collections.defaultdict(list)
 with open(args.input, 'rb') as inhandle:
     rdr = csv.DictReader(inhandle, delimiter='\t')
+    use_rs = ('rs' in rdr.fieldnames)
     for row in rdr:
-        key = (row['chrom'], int(row['pos']))
+        if use_rs:
+            key = (row['rs'], row['chrom'], int(row['pos']))
+        else:
+            key = (row['chrom'], int(row['pos']))
         grp = int(row['group'])
         if grp not in choices:
             choices[grp] = key
@@ -37,8 +41,19 @@ with open(args.input, 'rb') as inhandle:
 
 with open(args.output, 'wb') as out:
     for g, k in sorted(choices.iteritems()):
-        out.write(k[0] + '\t' + str(k[1]-1) + '\t' + str(k[1]) + '\t' +
-                  k[0] + '-' + str(k[1]) + '\t' + str(g) + '\t')
-        out.write(','.join(x['chrom'] + '-' + str(x['pos'])
-                           for x in groupings[g]) + '\n')
+        if use_rs:
+            ky = str(k[0])
+            c = k[1]
+            p = k[2]
+        else:
+            ky = str(k[0]) + '-' + str(k[1])
+            c = k[0]
+            p = k[1]
+        out.write(str(c) + '\t' + str(p-1) + '\t' + str(p) + '\t' +
+                  str(ky) + '\t' + str(g) + '\t')
+        if use_rs:
+            out.write(','.join(x['rs'] for x in groupings[g]) + '\n')
+        else:
+            out.write(','.join(x['chrom'] + '-' + str(x['pos'])
+                               for x in groupings[g]) + '\n')
 

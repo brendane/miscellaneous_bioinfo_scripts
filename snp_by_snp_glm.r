@@ -1,14 +1,14 @@
 #!/usr/bin/env Rscript
 #
-# Use generalized linear mixed models to test for differences in allele
+# Use generalized linear models to test for differences in allele
 # frequency.
 #
-# Each read is treated as an observation, and pools are treated as random
-# effects. A likelihood ratio test is used to produce a p-value.
+# Each read is treated as an observation, and pools are the replicates.
+# A likelihood ratio test is used to produce a p-value.
 #
 # Usage:
 #
-#   snp_by_snp_glmm_test.r <sync file> <file with pool names>
+#   snp_by_snp_glm.r <sync file> <file with pool names>
 #       <group 1 pools> <group 2 pools>
 #
 #   The names of the pools in each group should be separated by commas.
@@ -17,7 +17,6 @@
 
 
 library(data.table)
-library(lme4)
 
 options(warn=1)
 
@@ -49,32 +48,27 @@ is_variable = function(counts) {
 }
 
 null_result = list('p'=NaN, 'effect'=NaN, term=NA, converged=NA,
-                   'wald_p'=NaN, 'freqs0'=NA, 'freqs1'=NA)
+                   'freqs0'=NA, 'freqs1'=NA)
 
-## Run a GLMM with pool as a random effect. Use the default
-## Wald Z-test and likelihood ratio test to get p-values
+## Run a GLM Use a likelihood ratio test to get p-values.
+## Counts needs to be in the same order as groups
 test = function(counts, groups) {
-    resp = unlist(sapply(counts, function(x) c(rep(0, x[1]), rep(1, x[2]))))
-    n_reads = sapply(counts, sum)
+    resp = matrix(unlist(counts), ncol=2, byrow=TRUE)
+    pools = factor(names(counts))
+    trt = rep(names(groups), sapply(groups, length))
     freqs = structure(round(sapply(counts, function(x) x[1] / sum(x)), 4),
                       names=names(counts))
-    pools = factor(rep(names(counts), n_reads))
-    trt = rep(names(groups),
-              sapply(groups, function(x) sum(n_reads[x])))
     freqs0 = paste(freqs[names(freqs) %in% groups[[1]]], collapse=',')
     freqs1 = paste(freqs[names(freqs) %in% groups[[2]]], collapse=',')
     ret = null_result
     if(length(unique(trt)) > 1) {
-        ## Random intercept for each pool
-        m = glmer(resp ~ trt + (1|pools), family=binomial('logit'))
-        mnull = glmer(resp ~ (1|pools), family=binomial('logit'))
-        lrt_p = anova(m, mnull)[['Pr(>Chisq)']][2]
+        m = glm(resp ~ trt, family=binomial('logit'))
+        mnull = glm(resp ~ 1, family=binomial('logit'))
+        lrt_p = anova(m, mnull, test='Chisq')[['Pr(>Chi)']][2]
         s = summary(m)
-        conv = (length(s$optinfo$conv$lme4) == 0) &&
-               (length(mnull@optinfo$conv$lme4) == 0)
-        p = s$coefficients[2, 4]
-        fe = fixef(m)[2]
-        ret = list('p'=lrt_p, 'wald_p'=p, 'effect'=fe, 'term'=names(fe),
+        conv = (m$converged && mnull$converged)
+        fe = coefficients(m)[2]
+        ret = list('p'=lrt_p,'effect'=fe, 'term'=names(fe),
                    'converged'=as.numeric(conv),
                    'freqs0'=freqs0, 'freqs1'=freqs1)
     }
@@ -91,13 +85,14 @@ group_1 = Filter(function(x) x != '', unlist(strsplit(cargs[3], ',')))
 group_2 = Filter(function(x) x != '', unlist(strsplit(cargs[4], ',')))
 
 ## Read in data
-read_counts = fread(sync_file_name, sep='\t', stringsAsFactors=FALSE)
+read_counts = fread(sync_file_name, sep='\t', stringsAsFactors=FALSE,
+                    verbose=FALSE, showProgress=FALSE)
 pool_names = scan(pool_file_name, what='character')
 
 trts = list('group1'=group_1, 'group2'=group_2)
 
 ## Test every SNP and print results
-cat('contig\tpos\tref\tp\twald_p\teffect\tterm\tconverged\tfreqs0\tfreqs1\n', file=stdout())
+cat('contig\tpos\tref\tp\teffect\tterm\tconverged\tfreqs0\tfreqs1\n', file=stdout())
 for(i in 1:nrow(read_counts)) {
     row_data = read_counts[i]
     contig = row_data[[1]]
@@ -111,7 +106,7 @@ for(i in 1:nrow(read_counts)) {
         test_results = null_result
     }
 
-    cat(paste(contig, pos, ref, test_results$p, test_results$wald_p,
+    cat(paste(contig, pos, ref, test_results$p,
               test_results$effect, test_results$term, test_results$converged,
               test_results$freqs0, test_results$freqs1,
               sep='\t'),
