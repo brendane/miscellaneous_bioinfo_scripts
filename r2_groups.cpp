@@ -1,3 +1,4 @@
+// compile with std=c++11
 #include<algorithm>
 #include<cmath>
 #include<fstream>
@@ -15,7 +16,6 @@ using std::cout;
 using std::endl;
 using std::getline;
 using std::ifstream;
-using std::isnan;
 using std::pair;
 using std::sort;
 using std::string;
@@ -46,7 +46,7 @@ void getFreqs(const Record &x, const Record &y,
     unsigned b = 0;
     unsigned c = 0;
     for(unsigned i=0; i < x.data.size(); i++) {
-        if(isnan(x.data[i]) || isnan(y.data[i])) {
+        if(std::isnan(x.data[i]) || std::isnan(y.data[i])) {
             continue;
         }
         c++;
@@ -104,7 +104,9 @@ int main(int argc, char* argv[]) {
             float refCount = 0.;
             string column;
             stringstream lineStream(line);
+            bool na = false;
             while(getline(lineStream, column, '\t')) {
+                na = false;
                 if(c == 0) {
                     rec.chr = column;
                 } else if(c == 1) {
@@ -112,12 +114,17 @@ int main(int argc, char* argv[]) {
                 } else if(c == 2 && use_rs) {
                     rec.rs = column;
                 } else {
-                    aa = floor(atof(column.c_str()));
-                    if(!isnan(aa) && aa > 1) {
+                    if(column == "NA" || column == "NaN" || column == "nan") {
+                        na = true;
+                        aa = std::nanf("");
+                    } else {
+                        aa = floor(atof(column.c_str()));
+                    }
+                    if(!na && aa > 1) {
                         multiAllele = true;
                         break;
                     }
-                    if(!isnan(aa)) {
+                    if(!na) {
                         nChrs++;
                         refCount += aa;
                     }
