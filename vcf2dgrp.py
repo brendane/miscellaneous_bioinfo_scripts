@@ -9,6 +9,7 @@
         --subset        A bed file with positions to include, default is
                         to include everything
         --min-gt        Minimum genotyping rate (0)
+        --het-miss      Set heterozygous sites to missing
 """
 
 #==============================================================================#
@@ -27,12 +28,20 @@ def ambig(g):
             ('C','A'):'M', ('G','A'):'R', ('T','A'):'W', ('G','C'):'S',
             ('T','C'):'Y', ('T','G'):'K'}[g]
 
+def ambighm(g):
+    return {('A','A'):'A', ('T','T'):'T', ('C','C'):'C', ('G','G'):'G',
+            ('A','C'):'N', ('A','G'):'N', ('A','T'):'N', ('C','G'):'N',
+            ('C','T'):'N', ('G','T'):'N',
+            ('C','A'):'N', ('G','A'):'N', ('T','A'):'N', ('G','C'):'N',
+            ('T','C'):'N', ('T','G'):'N'}[g]
+
 #==============================================================================#
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--output')
 parser.add_argument('--subset')
 parser.add_argument('--min-gt', default=0.0, type=float)
+parser.add_argument('--het-miss', default=False, action='store_true')
 parser.add_argument('input')
 parser.add_argument('replicon')
 args = parser.parse_args()
@@ -65,7 +74,10 @@ with open(args.output, 'wb') as out:
                 missed += 1
             else:
                 g = tuple(str(rec.alleles[int(x)]).upper() for x in gt)
-                g = ambig(g)
+                if args.het_miss:
+                    g = ambighm(g)
+                else:
+                    g = ambig(g)
             gts.append(g)
         if 1 - (missed / float(len(gts))) < args.min_gt:
             continue

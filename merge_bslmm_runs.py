@@ -16,7 +16,7 @@ param_files = []
 for fname in os.listdir(iodir):
     if fname.endswith('param.txt'):
         param_files.append(fname)
-    if fname.endswith('hyp.fixed.txt'):
+    if fname.endswith('.hyp.txt'):
         hyp_files.append(fname)
 
 pdata = {}

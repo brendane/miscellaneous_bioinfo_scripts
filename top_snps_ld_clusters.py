@@ -31,7 +31,12 @@ genes = collections.defaultdict(set)
 groups = collections.defaultdict(set)
 rank = 1
 while rank <= N:
-    gene = data[rank]['gene']
+    try:
+        gene = data[rank]['gene']
+    except KeyError:
+        print "WARNING: gene for rank %i is missing" % rank
+        rank += 1
+        continue
     group = int(data[rank]['group'])
     if gene != '.':
         genes[gene].add(group)

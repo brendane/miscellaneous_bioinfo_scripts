@@ -13,6 +13,7 @@
         --min-gt        Minimum genotyping rate (0)
         --impute        Replace missing genotypes with the mean across
                         the entire sample
+        --het-miss      Make heterozygous sites missing.
 """
 
 #==============================================================================#
@@ -30,6 +31,7 @@ parser.add_argument('--subset')
 parser.add_argument('--min-gt', default=0.0, type=float)
 parser.add_argument('--impute', default=False, action='store_true')
 parser.add_argument('--rs', default=False, action='store_true')
+parser.add_argument('--het-miss', default=False, action='store_true')
 parser.add_argument('input')
 args = parser.parse_args()
 
@@ -44,7 +46,10 @@ else:
 
 with open(args.output, 'wb') as out:
     rdr = vcf.Reader(filename=args.input)
-    out.write('contig\tpos\t' + '\t'.join(rdr.samples) + '\n')
+    if args.rs:
+        out.write('contig\tpos\trs\t' + '\t'.join(rdr.samples) + '\n')
+    else:
+        out.write('contig\tpos\t' + '\t'.join(rdr.samples) + '\n')
     for rec in rdr:
         if (positions is not None) and ((rec.CHROM, str(rec.POS)) not in positions):
             continue
@@ -54,7 +59,7 @@ with open(args.output, 'wb') as out:
         sum_gt = 0
         for s in rec.samples:
             gt = re.split('\||/', s['GT'])
-            if gt[0] == '.':
+            if gt[0] == '.' or ((gt[0] != gt[1]) and args.het_miss):
                 g = 'NA'
                 missed += 1
             else:
