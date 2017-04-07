@@ -35,17 +35,8 @@ struct Record {
 };
 
 // To sort by MAF in descending order
-// UPDATE: now also sorts by number of genotyped strains in
-// descending order after sorting by MAF.
-//
-// Another approach would be to just sort by genotyping rate,
-// split the data into more genotyped and less genotyped segments,
-// then group the more genotyped variants first.
-bool recordRevGenoSort(const Record &a, const Record &b) {
-    return (a.nChrs > b.nChrs);
-}
 bool recordRevSort(const Record &a, const Record &b) {
-    return (a.maf > b.maf) && (a.nChrs > b.nChrs);
+    return a.maf > b.maf;
 }
 
 void getFreqs(const Record &x, const Record &y,
@@ -82,19 +73,18 @@ float calcR2(const Record &x, const Record &y, float thresh=0) {
 }
 
 int main(int argc, char* argv[]) {
-    if(argc < 4) {
+    if(argc < 3) {
         cerr << "Error: wrong number of arguments" << endl;
-        cerr << "r2_groups <r2 threshold> <missing threshold> <input file>" << endl;
+        cerr << "r2_groups <r2 threshold> <input file>" << endl;
         return 1;
     }
 
     bool use_rs = false;
-    if(argc == 5) {
-        use_rs = (bool) atoi(argv[3]);
+    if(argc == 4) {
+        use_rs = (bool) atoi(argv[2]);
     }
 
     float threshold = atof(argv[1]);
-    int miss_thresh = atoi(argv[2]);
 
     vector<Record> data;
     ifstream instream(argv[argc-1]);
@@ -158,25 +148,12 @@ int main(int argc, char* argv[]) {
         i++;
     }
 
-    // Sort data by maf and genotyping rate
+    // Sort data by maf
     sort(data.begin(), data.end(), recordRevSort);
 
     // Calculate R2 and group the variants
     long assign = 0;
     float r2;
-    for(unsigned j = 0; j < data.size()-1; j++) {
-        if(data[j].nChrs < miss_thresh) continue;
-        if(data[j].assignment != -1) continue;
-        assign++;
-        data[j].assignment = assign;
-        for(unsigned k = j+1; k < data.size(); k++) {
-            if(data[k].assignment != -1) continue;
-            r2 = calcR2(data[j], data[k], threshold);
-            if(r2 == -1.0) break;
-            if(r2 >= threshold)
-                data[k].assignment = assign;
-        }
-    }
     for(unsigned j = 0; j < data.size()-1; j++) {
         if(data[j].assignment != -1) continue;
         assign++;
