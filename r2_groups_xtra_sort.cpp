@@ -38,14 +38,11 @@ struct Record {
 // UPDATE: now also sorts by number of genotyped strains in
 // descending order after sorting by MAF.
 //
-// Another approach would be to just sort by genotyping rate,
-// split the data into more genotyped and less genotyped segments,
-// then group the more genotyped variants first.
-bool recordRevGenoSort(const Record &a, const Record &b) {
-    return (a.nChrs > b.nChrs);
-}
 bool recordRevSort(const Record &a, const Record &b) {
     return (a.maf > b.maf) && (a.nChrs > b.nChrs);
+}
+bool recordRevGenoSort(const Record &a, const Record &b) {
+    return (a.nChrs > b.nChrs);
 }
 
 void getFreqs(const Record &x, const Record &y,
