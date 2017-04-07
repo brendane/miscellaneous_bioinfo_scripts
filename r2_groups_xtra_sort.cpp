@@ -162,19 +162,6 @@ int main(int argc, char* argv[]) {
     long assign = 0;
     float r2;
     for(unsigned j = 0; j < data.size()-1; j++) {
-        if(data[j].nChrs < miss_thresh) continue;
-        if(data[j].assignment != -1) continue;
-        assign++;
-        data[j].assignment = assign;
-        for(unsigned k = j+1; k < data.size(); k++) {
-            if(data[k].assignment != -1) continue;
-            r2 = calcR2(data[j], data[k], threshold);
-            if(r2 == -1.0) break;
-            if(r2 >= threshold)
-                data[k].assignment = assign;
-        }
-    }
-    for(unsigned j = 0; j < data.size()-1; j++) {
         if(data[j].assignment != -1) continue;
         assign++;
         data[j].assignment = assign;
