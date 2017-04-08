@@ -161,6 +161,23 @@ int main(int argc, char* argv[]) {
     // Calculate R2 and group the variants
     long assign = 0;
     float r2;
+
+    // First group using the more highly genotyped markers as seeds
+    for(unsigned j = 0; j < data.size()-1; j++) {
+        if(data[j].assignment != -1) continue;
+        if(data[j].nChrs < miss_thresh) continue;
+        assign++;
+        data[j].assignment = assign;
+        for(unsigned k = j+1; k < data.size(); k++) {
+            if(data[k].assignment != -1) continue;
+            r2 = calcR2(data[j], data[k], threshold);
+            if(r2 == -1.0) break;
+            if(r2 >= threshold)
+                data[k].assignment = assign;
+        }
+    }
+
+    // Then group anything leftover
     for(unsigned j = 0; j < data.size()-1; j++) {
         if(data[j].assignment != -1) continue;
         assign++;
