@@ -39,6 +39,9 @@ bool recordRevSort(const Record &a, const Record &b) {
     return a.maf > b.maf;
 }
 
+// Heterozygotes are coded as 0.5 in the input for this script -
+// may not produce the ideal result (I haven't thought much
+// about it) - this is really written for haploids.
 void getFreqs(const Record &x, const Record &y,
         float &pa, float &pb, float &pab) {
     unsigned ab = 0;

@@ -41,10 +41,16 @@ struct Record {
 bool recordRevSort(const Record &a, const Record &b) {
     return (a.maf > b.maf) && (a.nChrs > b.nChrs);
 }
+bool recordRevMafSort(const Record &a, const Record &b) {
+    return (a.maf > b.maf);
+}
 bool recordRevGenoSort(const Record &a, const Record &b) {
     return (a.nChrs > b.nChrs);
 }
 
+// Heterozygotes are coded as 0.5 in the input for this script -
+// may not produce the ideal result (I haven't thought much
+// about it) - this is really written for haploids.
 void getFreqs(const Record &x, const Record &y,
         float &pa, float &pb, float &pab) {
     unsigned ab = 0;
@@ -58,7 +64,7 @@ void getFreqs(const Record &x, const Record &y,
         c++;
         if(x.data[i] > 0) a++;
         if(y.data[i] > 0) b++;
-        if(x.data[i] && y.data[i] > 0) ab++;
+        if(x.data[i] > 0 && y.data[i] > 0) ab++;
     }
     pa  = ((float)a)/c;
     pb  = ((float)b)/c;
@@ -79,19 +85,18 @@ float calcR2(const Record &x, const Record &y, float thresh=0) {
 }
 
 int main(int argc, char* argv[]) {
-    if(argc < 4) {
+    if(argc < 3) {
         cerr << "Error: wrong number of arguments" << endl;
-        cerr << "r2_groups <r2 threshold> <missing threshold> <input file>" << endl;
+        cerr << "r2_groups <r2 threshold> [use rs] <input file>" << endl;
         return 1;
     }
 
     bool use_rs = false;
-    if(argc == 5) {
-        use_rs = (bool) atoi(argv[3]);
+    if(argc == 4) {
+        use_rs = (bool) atoi(argv[2]);
     }
 
     float threshold = atof(argv[1]);
-    int miss_thresh = atoi(argv[2]);
 
     vector<Record> data;
     ifstream instream(argv[argc-1]);
@@ -101,6 +106,7 @@ int main(int argc, char* argv[]) {
     unsigned nChrs;
 
     unsigned i = 0;
+    unsigned max_genotyped = 0;
     while(std::getline(instream, line)) {
         multiAllele = false;
         nChrs = 0;
@@ -150,44 +156,33 @@ int main(int argc, char* argv[]) {
                     rec.maf = 1.0 - rec.maf;
                 rec.nChrs = nChrs;
                 data.push_back(rec);
+                if(nChrs > max_genotyped)
+                    max_genotyped = nChrs;
             }
         }
         i++;
     }
 
-    // Sort data by maf and genotyping rate
-    sort(data.begin(), data.end(), recordRevSort);
+    sort(data.begin(), data.end(), recordRevMafSort);
 
     // Calculate R2 and group the variants
     long assign = 0;
     float r2;
 
     // First group using the more highly genotyped markers as seeds
-    for(unsigned j = 0; j < data.size()-1; j++) {
-        if(data[j].assignment != -1) continue;
-        if(data[j].nChrs < miss_thresh) continue;
-        assign++;
-        data[j].assignment = assign;
-        for(unsigned k = j+1; k < data.size(); k++) {
-            if(data[k].assignment != -1) continue;
-            r2 = calcR2(data[j], data[k], threshold);
-            if(r2 == -1.0) break;
-            if(r2 >= threshold)
-                data[k].assignment = assign;
-        }
-    }
-
-    // Then group anything leftover
-    for(unsigned j = 0; j < data.size()-1; j++) {
-        if(data[j].assignment != -1) continue;
-        assign++;
-        data[j].assignment = assign;
-        for(unsigned k = j+1; k < data.size(); k++) {
-            if(data[k].assignment != -1) continue;
-            r2 = calcR2(data[j], data[k], threshold);
-            if(r2 == -1.0) break;
-            if(r2 >= threshold)
-                data[k].assignment = assign;
+    for(unsigned g = max_genotyped; g > 0; g--) {
+        for(unsigned j = 0; j < data.size()-1; j++) {
+            if(data[j].assignment != -1) continue;
+            if(data[j].nChrs < g) continue;
+            assign++;
+            data[j].assignment = assign;
+            for(unsigned k = j+1; k < data.size(); k++) {
+                if(data[k].assignment != -1) continue;
+                r2 = calcR2(data[j], data[k], threshold);
+                if(r2 == -1.0) break;
+                if(r2 >= threshold)
+                    data[k].assignment = assign;
+            }
         }
     }
     if(data[data.size()-1].assignment == -1)
