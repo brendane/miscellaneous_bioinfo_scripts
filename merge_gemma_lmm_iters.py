@@ -67,10 +67,10 @@ with gzip.open(args.output, 'wb') as oh:
         oh.write('\t'.join(colnames) + '\n')
         for i, row in top_vars:
             rows.append(row)
-            oh.write(str(i))
-            for cn in colnames[1:]:
-                oh.write('\t' + row[cn])
-            oh.write('\n')
+            #oh.write(str(i))
+            #for cn in colnames[1:]:
+            #    oh.write('\t' + row[cn])
+            #oh.write('\n')
         for row in rdr:
             row['iter'] = last_run
             rows.append(row)
