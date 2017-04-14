@@ -8,7 +8,7 @@
 #
 # Usage:
 #
-#   snp_by_snp_glm.r <sync file> <file with pool names>
+#   snp_by_snp_glm.r [--randomize] <sync file> <file with pool names>
 #       <group 1 pools> <group 2 pools>
 #
 #   The names of the pools in each group should be separated by commas.
@@ -79,17 +79,30 @@ test = function(counts, groups) {
 
 ## Get arguments to the script
 cargs = commandArgs(trailingOnly=TRUE)
-sync_file_name = cargs[1]
-pool_file_name = cargs[2]
-group_1 = Filter(function(x) x != '', unlist(strsplit(cargs[3], ',')))
-group_2 = Filter(function(x) x != '', unlist(strsplit(cargs[4], ',')))
+i = 0
+rand = FALSE
+if(cargs[1] == '--randomize') {
+    rand = TRUE
+    i = 1
+}
+sync_file_name = cargs[i + 1]
+pool_file_name = cargs[i + 2]
+group_1 = Filter(function(x) x != '', unlist(strsplit(cargs[i + 3], ',')))
+group_2 = Filter(function(x) x != '', unlist(strsplit(cargs[i + 4], ',')))
 
 ## Read in data
 read_counts = fread(sync_file_name, sep='\t', stringsAsFactors=FALSE,
                     verbose=FALSE, showProgress=FALSE)
 pool_names = scan(pool_file_name, what='character')
 
-trts = list('group1'=group_1, 'group2'=group_2)
+if(rand) {
+    all_pools = c(group_1, group_2)
+    rand_group_1 = sample(all_pools, length(group_1), FALSE)
+    rand_group_2 = all_pools[!all_pools %in% rand_group_1]
+    trts = list('group1'=rand_group_1, 'group2'=rand_group_2)
+} else {
+    trts = list('group1'=group_1, 'group2'=group_2)
+}
 
 ## Test every SNP and print results
 cat('contig\tpos\tref\tp\teffect\tterm\tconverged\tfreqs0\tfreqs1\n', file=stdout())
