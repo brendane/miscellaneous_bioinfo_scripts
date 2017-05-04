@@ -10,8 +10,12 @@ import itertools
 import sys
 
 max_dist = int(sys.argv[1])
+multiple_genes = False
+if len(sys.argv) > 2:
+    if sys.argv[2] == '1':
+        multiple_genes = True
 
-def get_closest(features, max_dist=10000000):
+def get_closest(features, max_dist=10000000, multiple_genes=False):
     features = [f for f in features if abs(int(f[13])) <= max_dist]
     features.sort(key=lambda x: abs(int(x[13])))
 
@@ -19,9 +23,17 @@ def get_closest(features, max_dist=10000000):
         return None
 
     if int(features[0][13]) == 0:
+        ret = []
         # If the variant is in the middle of a gene, then
         # we are all set
-        return features[0]
+        if multiple_genes:
+            for f in features:
+                if int(f[13]) == 0:
+                    ret.append(f)
+        else:
+            ret = [features[0]]
+        return ret
+
     
     # First get the closest downstream
     closest_down = None
@@ -35,7 +47,7 @@ def get_closest(features, max_dist=10000000):
 
     # If there is only one match, we are done
     if len(features) == 1:
-        return closest_down
+        return [closest_down]
 
     # Check if there are any upstream matches between
     # closest_down and the variant
@@ -52,16 +64,17 @@ def get_closest(features, max_dist=10000000):
     if up:
         return None
     else:
-        return closest_down
+        return [closest_down]
 
 rdr = csv.reader(sys.stdin, delimiter='\t')
 for coords, _features in itertools.groupby(rdr, lambda x: (x[0], x[1], x[2], x[3])):
     features = list(_features)
 
-    closest_down = get_closest(features, max_dist)
+    closest_down = get_closest(features, max_dist, multiple_genes)
     if closest_down is None:
         sys.stdout.write('\t'.join(features[0][:4] +
                                    ['.', '.','.', '.', '.', '.', '.', '.', '.'])
                          + '\n')
     else:
-        sys.stdout.write('\t'.join(closest_down[:-1]) + '\n')
+        for cd in closest_down:
+            sys.stdout.write('\t'.join(cd[:-1]) + '\n')

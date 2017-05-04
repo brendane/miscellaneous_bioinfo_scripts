@@ -21,7 +21,6 @@ impute = function(x) {
 })
 }
 
-
 #==============================================================================#
 
 cargs = commandArgs(trailingOnly=TRUE)
@@ -86,7 +85,10 @@ for(i in 1:nrow(top_vars)) {
     }
     top_vars_geno = top_vars_geno[, !all_missing]
     focal_vars = focal_vars[!all_missing]
+    focal_interacts = t(combn(focal_vars, 2))
     n_vars = length(focal_vars)
+    n_interacts = length(focal_interacts)
+    n_terms = n_vars + n_interacts
 
     ## Each variant by itself
     indiv_vars = data.frame('var'=focal_vars,
@@ -112,25 +114,33 @@ for(i in 1:nrow(top_vars)) {
     ## Model selection
     sel_methods = c('R2', 'AIC')
     n_meth = length(sel_methods)
-    model_selection = data.frame(replicate=rep(i, n_vars*n_meth),
-                                 'nvars'=rep(1:n_vars, each=n_meth),
-                                 'r2'=numeric(n_vars*n_meth),
-                                 'aic'=numeric(n_vars*n_meth),
-                                 'best'=rep(1, n_vars*n_meth),
-                                 'added'=character(n_vars*n_meth),
-                                 'vars'=character(n_vars*n_meth),
+    model_selection = data.frame(replicate=rep(i, n_terms*n_meth),
+                                 'nvars'=rep(1:n_terms, each=n_meth),
+                                 'r2'=numeric(n_terms*n_meth),
+                                 'aic'=numeric(n_terms*n_meth),
+                                 'best'=rep(1, n_terms*n_meth),
+                                 'added'=character(n_terms*n_meth),
+                                 'vars'=character(n_terms*n_meth),
                                  stringsAsFactors=FALSE)
     for(sm in seq_along(sel_methods)) {
         method = sel_methods[sm]
         model_vars = logical(n_vars)
+        model_i_vars = logical(n_interacts)
         for(j in 1:n_vars) {
-            models = list(sum(!model_vars))
             tested_vars = which(!model_vars)
+            if(sum(model_vars) > 1) {
+                ## TODO: interaction terms to test need to be variables
+                ## currently in the model as main effects
+                tested_interactions = which(!model_i_vars & ...)
+            }
+            ## TODO - needs to include interactions
+            models = vector('list', length=sum(!model_vars))
             for(k in seq_along(tested_vars)) {
                 cols = model_vars
                 cols[tested_vars[k]] = TRUE
                 models[[k]] = lm(pheno[, 2] ~ top_vars_geno[, cols])
             }
+            ## This part is mostly okay
             r2s = sapply(models, function(m) summary(m)$r.squared)
             aics = sapply(models, function(m) AICc(m))
             if(method == 'R2') {
@@ -147,11 +157,13 @@ for(i in 1:nrow(top_vars)) {
                 best = best[1]
             }
             model_vars[tested_vars[best]] = TRUE
+            ## TODO adjust index n_vars*... for interactions
             model_selection[(n_vars*(sm-1))+j, 'nvars'] = j
             model_selection[(n_vars*(sm-1))+j, 'r2'] = r2s[best]
             model_selection[(n_vars*(sm-1))+j, 'aic'] = aics[best]
-            model_selection[(n_vars*(sm-1))+j, 'best'] = method
+            model_selection[(n_vars*(sm-1))+j, 'aic'] = method
             model_selection[(n_vars*(sm-1))+j, 'added'] = focal_vars[tested_vars[best]]
+            ## TODO - this line needs to handle interactions
             model_selection[(n_vars*(sm-1))+j, 'vars'] = paste(focal_vars[model_vars],
                                                                collapse=',')
         }

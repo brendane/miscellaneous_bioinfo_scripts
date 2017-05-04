@@ -59,11 +59,15 @@ with open(args.output, 'wb') as out:
         sum_gt = 0
         for s in rec.samples:
             gt = re.split('\||/', s['GT'])
-            if gt[0] == '.' or ((gt[0] != gt[1]) and args.het_miss):
+            pl = len(gt)
+            if pl > 1 and (gt[0] == '.' or ((gt[0] != gt[1]) and args.het_miss)):
+                g = 'NA'
+                missed += 1
+            elif pl == 1 and gt[0] == '.':
                 g = 'NA'
                 missed += 1
             else:
-                g = sum(1 for c in gt if c == '0') / 2.
+                g = sum(1 for c in gt if c == '0') / float(pl)
                 sum_gt += g
             gts.append(str(g))
         if 1 - (missed / float(len(gts))) < args.min_gt:
