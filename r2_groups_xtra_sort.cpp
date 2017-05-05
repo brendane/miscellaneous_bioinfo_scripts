@@ -30,6 +30,7 @@ struct Record {
     string rs;
     unsigned nChrs;
     long assignment; 
+    bool seed;
 
     Record():assignment(-1){}
 };
@@ -176,33 +177,40 @@ int main(int argc, char* argv[]) {
             if(data[j].nChrs < g) continue;
             assign++;
             data[j].assignment = assign;
+            data[j].seed = true;
             for(unsigned k = j+1; k < data.size(); k++) {
                 if(data[k].assignment != -1) continue;
                 r2 = calcR2(data[j], data[k], threshold);
                 if(r2 == -1.0) break;
-                if(r2 >= threshold)
+                if(r2 >= threshold) {
                     data[k].assignment = assign;
+                    data[k].seed = false;
+                }
             }
         }
     }
-    if(data[data.size()-1].assignment == -1)
+    if(data[data.size()-1].assignment == -1) {
         data[data.size()-1].assignment = assign + 1;
+        data[data.size()-1].seed = true;
+    }
 
     // Write the output
     if(use_rs) {
-        cout << "chrom\tpos\trs\tmaf\tn\tgroup" << endl;
+        cout << "chrom\tpos\trs\tmaf\tn\tgroup\tseed" << endl;
         for(unsigned j = 0; j < data.size(); j++) {
             cout << data[j].chr << "\t" << data[j].pos << "\t" <<
                 data[j].rs << "\t" <<
                 data[j].maf << "\t" << data[j].nChrs << "\t" <<
-                data[j].assignment << endl;
+                data[j].assignment << "\t" << 
+                (int)(data[j].seed) << endl;
         }
     } else {
         cout << "chrom\tpos\tmaf\tn\tgroup" << endl;
         for(unsigned j = 0; j < data.size(); j++) {
             cout << data[j].chr << "\t" << data[j].pos << "\t" <<
                 data[j].maf << "\t" << data[j].nChrs << "\t" <<
-                data[j].assignment << endl;
+                data[j].assignment << "\t" <<
+                (int)(data[j].seed) << endl;
         }
     }
 }
