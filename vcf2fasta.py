@@ -12,6 +12,9 @@
     --sample            Which sample to target (this script does one at
                         a time)
     --replicon          Target replicon
+    --het-missing       Set heterozygous calls to missing; otherwise, just
+                        takes the first allele listed
+    --max-pos           Maximum allowed position in replicon
 
     Assumes only bi-allelic SNPs in VCF file, and only works on haploids.
 """
@@ -32,6 +35,8 @@ parser.add_argument('--min-coverage', type=int)
 parser.add_argument('--min-covered', type=float)
 parser.add_argument('--sample')
 parser.add_argument('--replicon')
+parser.add_argument('--het-missing', default=False, action='store_true')
+parser.add_argument('--max-pos', type=int, default=1E9)
 parser.add_argument('vcf')
 parser.add_argument('ref')
 parser.add_argument('depth')
@@ -45,6 +50,7 @@ target_sample_name = args.sample
 output_file_name = args.output
 min_coverage = args.min_coverage
 min_covered = args.min_covered
+max_pos = args.max_pos
 
 # Get variant positions from VCF file
 snps = {}
@@ -55,13 +61,21 @@ for rec in vf:
     ref_replicon = rec.chrom
     if ref_replicon != target_replicon:
         continue
+    if ref_pos > max_pos:
+        continue
     ref_allele = rec.ref
     alt_allele = rec.alts[0]
+    # Skip indels
+    if max(map(len, [ref_allele] + list(rec.alts))) > 1:
+        continue
     gt = (rec.samples[0]['GT'][0])
     if gt is None:
         snps[(ref_replicon, ref_pos)] = 'N'
     else:
-        snps[(ref_replicon, ref_pos)] = [ref_allele, alt_allele][gt]
+        if args.het_missing and rec.samples[0]['GT'][1] != gt:
+            snps[(ref_replicon, ref_pos)] = 'N'
+        else:
+            snps[(ref_replicon, ref_pos)] = ([ref_allele] + list(rec.alts))[gt]
 
 # Read reference sequence
 refseq = str(SeqIO.read(ref_file_name, 'fasta').seq)

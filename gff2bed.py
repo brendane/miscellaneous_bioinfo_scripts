@@ -18,6 +18,7 @@ parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--include')
 parser.add_argument('--exclude')
 parser.add_argument('--id', default=False, action='store_true')
+parser.add_argument('--id-field')
 parser.add_argument('input', nargs='+')
 args = parser.parse_args()
 
@@ -33,6 +34,8 @@ else:
 
 extract_id = args.id
 
+id_field = args.id_field
+
 for infile in args.input:
     with open(infile, 'rb') as handle:
         rdr = csv.reader(handle, delimiter='\t')
@@ -46,6 +49,9 @@ for infile in args.input:
             name = row[8]
             if extract_id:
                 name = [x for x in name.split(';') if x.startswith('ID=')][0]
+                name = re.sub('ID=', '', name)
+            elif id_field is not None:
+                name = [x for x in name.split(';') if x.startswith(id_field + '=')][0]
                 name = re.sub('ID=', '', name)
             if included is not None and feature_type not in included:
                 continue

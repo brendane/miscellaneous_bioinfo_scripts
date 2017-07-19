@@ -36,17 +36,8 @@ struct Record {
 };
 
 // To sort by MAF in descending order
-// UPDATE: now also sorts by number of genotyped strains in
-// descending order after sorting by MAF.
-//
-bool recordRevSort(const Record &a, const Record &b) {
-    return (a.maf > b.maf) && (a.nChrs > b.nChrs);
-}
 bool recordRevMafSort(const Record &a, const Record &b) {
     return (a.maf > b.maf);
-}
-bool recordRevGenoSort(const Record &a, const Record &b) {
-    return (a.nChrs > b.nChrs);
 }
 
 // Heterozygotes are coded as 0.5 in the input for this script -
@@ -74,15 +65,17 @@ void getFreqs(const Record &x, const Record &y,
 
 // Returns R2 or -1 if it is not possible for R2 to be >= thresh.
 // Formula for determining possible R2 comes from Wray 2005.
-float calcR2(const Record &x, const Record &y, float thresh=0) {
+float calcR2(const Record &x, const Record &y, float thresh=0,
+        bool check_maf=true) {
     float pa, pb, pab;
-    if(y.maf < ( (thresh * x.maf) / (1 - x.maf * (1 - thresh)) ) ||
-            y.maf >  ( x.maf / (x.maf * (1 - thresh) + thresh) )) {
-        return -1.0;
-    } else {
-        getFreqs(x, y, pa, pb, pab);
-        return pow((pab - (pa * pb)), 2) / (pa * (1-pa) * pb * (1-pb));
+    if(check_maf) {
+        if(y.maf < ( (thresh * x.maf) / (1 - x.maf * (1 - thresh)) ) ||
+                y.maf >  ( x.maf / (x.maf * (1 - thresh) + thresh) )) {
+            return -1.0;
+        }
     }
+    getFreqs(x, y, pa, pb, pab);
+    return pow((pab - (pa * pb)), 2) / (pa * (1-pa) * pb * (1-pb));
 }
 
 int main(int argc, char* argv[]) {
@@ -171,17 +164,29 @@ int main(int argc, char* argv[]) {
     float r2;
 
     // First group using the more highly genotyped markers as seeds
+    // TODO for improved peformance: calculate the min and max MAF
+    // that could match the threshold once for each seed, and then
+    // test those. Wait until there are results available from the
+    // less complicated method.
     for(unsigned g = max_genotyped; g > 0; g--) {
-        for(unsigned j = 0; j < data.size()-1; j++) {
+        for(unsigned j = 0; j < data.size(); j++) {
             if(data[j].assignment != -1) continue;
             if(data[j].nChrs < g) continue;
             assign++;
             data[j].assignment = assign;
             data[j].seed = true;
-            for(unsigned k = j+1; k < data.size(); k++) {
+            for(unsigned k = 0; k < data.size(); k++) {
+                if(k == j) continue;
                 if(data[k].assignment != -1) continue;
-                r2 = calcR2(data[j], data[k], threshold);
-                if(r2 == -1.0) break;
+                r2 = calcR2(data[j], data[k], threshold, false);
+                // If we weren't starting with the most highly genotyped
+                // markers as seeds, we could start the inner loop with
+                // k = j+1 and stop when MAF is too low, but now it's more
+                // complicated. Could still stop when MAF is too low, but
+                // would have to iterate through all the records for which
+                // it is too high first. Less error prone just to let the
+                // program run longer.
+                //if(r2 == -1.0) break;
                 if(r2 >= threshold) {
                     data[k].assignment = assign;
                     data[k].seed = false;
@@ -205,7 +210,7 @@ int main(int argc, char* argv[]) {
                 (int)(data[j].seed) << endl;
         }
     } else {
-        cout << "chrom\tpos\tmaf\tn\tgroup" << endl;
+        cout << "chrom\tpos\tmaf\tn\tgroup\tseed" << endl;
         for(unsigned j = 0; j < data.size(); j++) {
             cout << data[j].chr << "\t" << data[j].pos << "\t" <<
                 data[j].maf << "\t" << data[j].nChrs << "\t" <<

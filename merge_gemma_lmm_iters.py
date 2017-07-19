@@ -25,14 +25,15 @@ def get_top_var(rdr, itern):
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--output')
 parser.add_argument('--output-bed')
+parser.add_argument('--output-bed-0')
 parser.add_argument('indir')
 parser.add_argument('onevar')
 args = parser.parse_args()
 
 ld_groups = dict()
 with open(args.onevar, 'rb') as ih:
-    rdr = csv.reader(ih, delimiter='\t')
-    for row in rdr:
+    for line in ih:
+        row = line.strip().split('\t')
         group = 'group-' + row[4]
         vars_in_group = row[5].split(',')
         vars_list = []
@@ -85,6 +86,21 @@ with gzip.open(args.output, 'wb') as oh:
 
 with open(args.output_bed, 'wb') as oh:
     for i, row in enumerate(rows):
+        for var in ld_groups[row['rs']]:
+            oh.write('\t'.join(str(x) for x in var[:3]) + '\t' +
+                     row['rs'] + '\t' + str(i) + '\n')
+
+iter0_rows = []
+with gzip.open(osp.join(args.indir, assoc_files[0][1]), 'rb') as ih:
+    rdr = csv.DictReader(ih, delimiter='\t')
+    colnames = ['iter'] + rdr.fieldnames
+    for row in rdr:
+        row['iter'] = 0
+        iter0_rows.append(row)
+iter0_rows.sort(key=lambda x: (int(x['iter']), float(x['p_lrt'])))
+
+with open(args.output_bed_0, 'wb') as oh:
+    for i, row in enumerate(iter0_rows):
         for var in ld_groups[row['rs']]:
             oh.write('\t'.join(str(x) for x in var[:3]) + '\t' +
                      row['rs'] + '\t' + str(i) + '\n')

@@ -44,6 +44,7 @@ else:
 rdr = vcf.Reader(filename=args.input)
 data = [[] for s in rdr.samples]
 samples = rdr.samples
+het_count = 0
 for rec in rdr:
     if (positions is not None) and ((rec.CHROM, str(rec.POS)) not in positions):
         continue
@@ -60,6 +61,8 @@ for rec in rdr:
     for s in rec.samples:
         gt = s.gt_alleles
         if gt[0] is None or s.is_het:
+            if s.is_het:
+                het_count += 1
             g = 'N'
             missed += 1
         else:
@@ -76,3 +79,5 @@ with open(args.output, 'wb') as out:
     for sample, gts in itertools.izip(samples, data):
         out.write('>' + sample + '\n')
         out.write(''.join(gts) + '\n')
+
+print 'Found %i heterozygous calls' % het_count

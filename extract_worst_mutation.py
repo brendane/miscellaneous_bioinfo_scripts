@@ -11,6 +11,11 @@
 
     extract_worst_mutation.py --output <output file> <input file>
 
+        --pos-grouping: Group variants by position; if multiple lines
+            have the position, collapse them into one variant.
+        --rs: third field in input is the rs value; add to last column
+            of output
+
     If input or output is given as "-", read from / write to stdin/stdout.
 
     The input file should have the annotations in the third column.
@@ -19,6 +24,8 @@
 #==============================================================================#
 
 import argparse
+import csv
+import itertools
 import re
 import sys
 
@@ -41,10 +48,19 @@ variant_order = [ 'chromosome_number_variation', 'exon_loss_variant',
                   'conserved_intergenic_variant', 'intergenic_region', 'coding_sequence_variant',
                   'non_coding_exon_variant', 'nc_transcript_variant', 'gene_variant', 'chromosome']
 
+def pass_through(it):
+    for i in it:
+        yield [(i[0], i[1]), [i]] # List form to match group_by
+
+def chr_pos_grouper(it):
+    return itertools.groupby(it, lambda x: (x[0], x[1]))
+
 #==============================================================================#
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--output')
+parser.add_argument('--pos-grouping', default=False, action='store_true')
+parser.add_argument('--rs', default=False, action='store_true')
 parser.add_argument('input')
 args = parser.parse_args()
 
@@ -58,11 +74,22 @@ if args.output is None or args.output == '-':
 else:
     outhandle = open(args.output, 'wb')
 
+if args.pos_grouping:
+    iterator = chr_pos_grouper
+else:
+    iterator = pass_through
+
 with inhandle as ih:
     with outhandle as out:
-        for line in ih:
-            fields = line.strip().split('\t')
-            annot = [j for f in fields[2:] for j in f.split('&')]
+        rdr = csv.reader(ih, delimiter='\t')
+        for (chrom, p), rows in iterator(rdr):
+            rows = [r for r in rows]
+            if args.rs:
+                rs = rows[0][2]
+                annot_idx = 3
+            else:
+                annot_idx = 2
+            annot = [j for row in rows for f in row[annot_idx:] for j in f.split('&')]
             worst = None
             worst_index = len(variant_order)
             for v in annot:
@@ -78,6 +105,10 @@ with inhandle as ih:
             worst = re.sub('_variant', '', worst)
             if worst == 'downstream_gene' or worst == 'upstream_gene':
                 worst = 'intergenic'
-            p = int(fields[1])
-            out.write(fields[0] + '\t' + str(p - 1) + '\t' + str(p) +
-                      '\t' + worst + '\n')
+            p = int(p)
+            if args.rs:
+                out.write(chrom + '\t' + str(p - 1) + '\t' + str(p) +
+                          '\t' + worst + '\t' + rs + '\n')
+            else:
+                out.write(chrom + '\t' + str(p - 1) + '\t' + str(p) +
+                          '\t' + worst + '\n')
