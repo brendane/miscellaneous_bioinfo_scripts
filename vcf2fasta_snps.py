@@ -10,6 +10,7 @@
                         to include everything
         --min-gt        Minimum genotyping rate (0)
         --max-pos       Maximum position in genome (for getting rid of RDVs)
+        --exclude       Exclude these replicons
 
     Ignores heterozygous sites.
 """
@@ -29,6 +30,7 @@ parser.add_argument('--output')
 parser.add_argument('--min-gt', default=0.0, type=float)
 parser.add_argument('--subset')
 parser.add_argument('--max-pos', default=10E9, type=int)
+parser.add_argument('--exclude')
 parser.add_argument('input')
 args = parser.parse_args()
 
@@ -41,12 +43,19 @@ else:
             contig, _, pos = line.strip().split()[:3]
             positions.add((contig, pos))
 
+exclude = set()
+if args.exclude is not None:
+    for r in args.exclude.split(','):
+        exclude.add(r.strip())
+
 rdr = vcf.Reader(filename=args.input)
 data = [[] for s in rdr.samples]
 samples = rdr.samples
 het_count = 0
 for rec in rdr:
     if (positions is not None) and ((rec.CHROM, str(rec.POS)) not in positions):
+        continue
+    if rec.CHROM in exclude:
         continue
     if rec.POS > args.max_pos:
         continue

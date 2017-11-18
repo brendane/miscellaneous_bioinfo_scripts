@@ -2,7 +2,7 @@
 """
     Turn a clstr file from CD-Hit into a VCF file.
 
-    cdhit2vcf.py <clstr file> <output file> <contig name>
+    cdhit2vcf.py <clstr file> <output file> <contig name> [exclude pattern]
 
     Assumes genes are named <strain>.<gene name>
 """
@@ -14,6 +14,9 @@ import sys
 infile = sys.argv[1]
 outfile = sys.argv[2]
 contig = sys.argv[3]
+exclude_pattern = None
+if len(sys.argv) > 4:
+    exclude_pattern = sys.argv[4]
 
 strains = set()
 clusters = collections.defaultdict(set)
@@ -27,8 +30,9 @@ with open(infile, 'rb') as ih:
         else:
             gene = line.split(' ')[1]
             strain = gene[1:].split('.')[0]
-            strains.add(strain)
-            clusters[cluster_number].add(strain)
+            if exclude_pattern is None or exclude_pattern not in strain:
+                strains.add(strain)
+                clusters[cluster_number].add(strain)
 
 strs = sorted(strains)
 

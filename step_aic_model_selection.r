@@ -48,8 +48,13 @@ cat('n_vars_start\tr2\tr2_unadj\tgenomic_r2\tgenomic_r2_unadj\tn_vars_final\t',
     file=oh, sep='')
 cat('n_vars_start\tphenotype\tfitted\n', file=ohf)
 for(nv in n_vars) {
-    rhs = paste('~', paste(paste0('X[,', 1:nv, ']'), collapse=' + '))
+    XX = as.matrix(X[, 1:nv]) # NEW
+    colnames(XX) = paste0('XX', 1:nv)
+    #rhs = paste('~', paste(paste0('X[,', 1:nv, ']'), collapse=' + '))
+    rhs = '~ XX'   # NEW
     form = paste('y', rhs)
+    XX = as.matrix(XX[, !is.na(apply(XX, 2, mean))])
+    if(ncol(XX) == 0) { next }
     m_full = lm(form)
     m_final = stepAIC(m_full, scope=list(lower=~1), direction='backward',
                       trace=FALSE)
@@ -57,21 +62,29 @@ for(nv in n_vars) {
     r2 = s$r.squared
     r2a = s$adj.r.squared
     rhs_final = as.character(m_final$call$formula)[3]
-    ranks_final = as.numeric(gsub('X\\[,', '',
-                                  gsub('\\]', '', names(m_final$coefficients)[-1])))
+    ranks_final = as.numeric(gsub('XX', '',
+                                  names(m_final$coefficients)[-1]))
     coefs_final = m_final$coefficients
     variants_final = variants[ranks_final]
     ft = m_final$fitted.values
     gr2 = 0
+    gr2c = 0
     gr2a = 0
+    gr2ac = 0
     for(i in 1:n_random_vars) {
         ss = summary(lm(paste('X_rand[, i] ~', rhs_final)))
-        gr2 = gr2 + ss$r.squared
-        gr2a = gr2a + ss$adj.r.squared
+        if(!is.na(ss$r.squared)) {
+            gr2 = gr2 + ss$r.squared
+            gr2c = gr2c + 1
+        }
+        if(!is.na(ss$adj.r.squared)) {
+            gr2a = gr2a + ss$adj.r.squared
+            gr2ac = gr2ac + 1
+        }
     }
     cat(nv, '\t', round(r2a, 3), '\t', round(r2, 3),
-        '\t', round(gr2a/n_random_vars, 3),
-        '\t', round(gr2/n_random_vars, 3),
+        '\t', round(gr2a/gr2ac, 3),
+        '\t', round(gr2/gr2c, 3),
         '\t', length(variants_final),
         '\t', paste(ranks_final, collapse=','),
         '\t', paste(variants_final, collapse=','),
@@ -80,6 +93,8 @@ for(nv in n_vars) {
     write.table(cbind(rep(nv, sum(!is.na(y))), y[!is.na(y)], ft),
                 col.names=FALSE, row.names=FALSE, quote=FALSE,
                 sep='\t', file=ohf)
+    flush(oh)
+    flush(ohf)
 }
 
 close(oh)

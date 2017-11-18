@@ -53,15 +53,21 @@ def get_closest(features, max_dist=10000000, multiple_genes=False):
     # Check if there are any upstream matches between
     # closest_down and the variant
     up = False
-    cd_start, cd_end = int(closest_down[8]), int(closest_down[9])
+    cd_start, cd_end, cd_strand = int(closest_down[8]), int(closest_down[9]), closest_down[11]
     a_start, a_end = int(closest_down[1]), int(closest_down[2])
     for f in features:
         if int(f[14]) < 0:
             continue
         start, end = int(f[8]), int(f[9])
-        if end >= cd_end and end <= a_start:
-            up = True
-            break
+        if abs(int(f[14])) < abs(int(closest_down[14])):
+            if cd_strand == '+':
+                if start > a_start:
+                    up = True
+                    break
+            if cd_strand == '-':
+                if end < a_end:
+                    up = True
+                    break
     if up:
         return None
     else:

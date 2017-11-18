@@ -14,6 +14,7 @@ import vcf
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--output')
+parser.add_argument('--allele', action='store_true', default=False)
 parser.add_argument('input')
 args = parser.parse_args()
 
@@ -31,21 +32,29 @@ for rec in rdr:
         raise Exception('Indels in dataset')
     allele_length = lens[0]
     if allele_length == 1:
-        new_snps[rs].append((chrom, pos, rs, chrom, pos))
+        for a in alleles[1:]:
+            new_snps[rs].append((chrom, pos, rs, chrom, pos, str(a)))
     else:
         var_pos = []
         for i, b in enumerate(alleles[0]):
             variant = False
             for a in alleles[1:]:
                 if str(a)[i] != b:
-                    var_pos.append(pos + i)
+                    var_pos.append((pos + i, str(a)[i]))
                     break
         for vp in var_pos:
-            new_snps[rs].append((chrom, vp, rs, chrom, pos))
+            new_snps[rs].append((chrom, vp[0], rs, chrom, pos, vp[1]))
 
 with open(args.output, 'wb') as ohandle:
-    ohandle.write('chrom\tpos\trs\torig_chrom\torig_pos\n')
+    if args.allele:
+        ohandle.write('chrom\tpos\trs\torig_chrom\torig_pos\talt_allele\n')
+    else:
+        ohandle.write('chrom\tpos\trs\torig_chrom\torig_pos\n')
     for rs, info in sorted(new_snps.iteritems()):
-        for nc, vp, rs, c, p in info:
-            ohandle.write(nc + '\t' + str(vp) + '\t' + rs + '\t' +
-                          c + '\t' + str(p) + '\n')
+        for nc, vp, rs, c, p, a in info:
+            if args.allele:
+                ohandle.write(nc + '\t' + str(vp) + '\t' + rs + '\t' +
+                              c + '\t' + str(p) + '\t' + a + '\n')
+            else:
+                ohandle.write(nc + '\t' + str(vp) + '\t' + rs + '\t' +
+                              c + '\t' + str(p) + '\n')
