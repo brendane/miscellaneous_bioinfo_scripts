@@ -212,3 +212,30 @@ with open(args.output + '/summary.tsv', 'wb') as summary:
         shutil.copyfile(tmp + '.aln',
                     args.output + '/' + tag + '.fasta')
         os.unlink(tmp + '.aln')
+
+# Make summary file for each strain separately
+for i, fname in enumerate(args.coords):
+    # Get the qry file tag name
+    qf = ''
+    with open(fname, 'rb') as ih:
+        _, qf = ih.readline().strip().split()
+    with open(args.output + '/summary_' + str(i) + '.tsv', 'wb') as oh:
+        oh.write('# ' + fname + '\n')
+        oh.write('gene\tcds\tflank1\tflank2\tfull\n')
+        for tag in info:
+            if qf not in info[tag]:
+                continue
+            full_seq = info[tag][qf]['qry_seq']
+            f0_seq = info[tag][qf]['qry_flank_0']
+            f1_seq = info[tag][qf]['qry_flank_1']
+            cds_seq = full_seq[len(f0_seq):(len(full_seq)-len(f1_seq))]
+            if info[tag][qf]['strand'] == '-':
+                full_seq.seq = Seq.reverse_complement(full_seq.seq)
+                cds_seq.seq = Seq.reverse_complement(cds_seq.seq)
+                tmp = f0_seq
+                f0_seq.seq = Seq.reverse_complement(f1_seq.seq)
+                f1_seq.seq = Seq.reverse_complement(tmp.seq)
+            oh.write(tag + '\t' + str(cds_seq.seq) + '\t' + 
+                     str(f0_seq.seq) + '\t' + str(f1_seq.seq) + 
+                     '\t' + str(full_seq.seq) + '\n')
+
