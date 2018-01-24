@@ -38,6 +38,7 @@ with open(args.inputlist, 'rb') as ih:
 
 # Get strain ids
 strains = [h.readline().strip().split('\t')[-1] for h in file_handles]
+print 'Found %i strains' % len(strains)
 
 # Iterate over files
 pad = 0
@@ -46,11 +47,13 @@ gts = [] # [pos, ref, gt calls...]
 prev_contig = None
 prev_pos = 0
 for lines in itertools.izip(*file_handles):
+    gt = []
     for i, l in enumerate(lines):
         fields = l.strip().split('\t')
-        gt = []
         if i == 0:
             c, p = fields[:2]
+            if prev_contig is None:
+                contigs.append((c, pad + 1))
             if prev_contig is not None and c != prev_contig:
                 pad += prev_pos + 1000
                 contigs.append((c, pad + 1))
@@ -61,13 +64,10 @@ for lines in itertools.izip(*file_handles):
         else:
             if (c, p) != tuple(fields[:2]):
                 raise Exception('Files do not match at file %i' %i)
-            gt.append(fields[2])
-    if c == '8006_psyma_acc' and p == '10769':
-        ## TODO why aren't segregating sites showing up in output
-        import pdb; pdb.set_trace()
+        gt.append(fields[3])
     # Check if this site is segregating
     base_calls = set(r_iupac[g] for g in gt[2:] if g != 'N')
-    if len(gt) > 1:
+    if len(base_calls) > 1:
         gts.append(gt)
 
 
@@ -84,6 +84,9 @@ with open(args.output + '.snps.txt', 'wb') as oh:
         oh.write(','.join(str(x) for x in gt) + '\n')
 
 # Write contig start positions in combined contig
+with open(args.output + '.contigs.txt', 'wb') as oh:
+    for (c, s) in contigs:
+        oh.write(c + '\t' + str(s) + '\n')
 
 # Close file handles
 for h in file_handles:

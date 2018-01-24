@@ -3,7 +3,7 @@
     Extract SNPs from a reference genome + the results of show-snps +
     the results of show-coords.
 
-    mummer_extract_snps.py coords snps
+    mummer_extract_snps.py coords snps name
 
     Requires biopython.
 
@@ -44,12 +44,12 @@ with open(args.coords, 'rb') as ih:
 
     ih.readline(); ih.readline();
     header = ih.readline().strip()
-    if header != '[S1]\t[E1]\t[S2]\t[E2]\t[LEN 1]\t[LEN 2]\t[TAGS]':
+    if header != '[S1]\t[E1]\t[S2]\t[E2]\t[LEN 1]\t[LEN 2]\t[% IDY]\t[TAGS]':
         raise Exception('Columns are not as expected in coords file')
 
     for line in ih:
         row = line.strip().split('\t')
-        s, e, c = int(row[0]), int(row[1]), row[6]
+        s, e, c = int(row[0]), int(row[1]), row[7]
         if c not in ref_covered:
             ref_covered[c] = []
         if s > e:
