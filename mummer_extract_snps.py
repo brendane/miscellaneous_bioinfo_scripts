@@ -107,24 +107,8 @@ with open(args.snps, 'rb') as ih:
         filled_in_seq[c][int(p)-1] = q
 
 with open(args.output, 'wb') as oh:
-    oh.write('##fileformat=VCFv4.1\n')
-    oh.write('##source=mummer_extract_snps\n')
-    oh.write('##reference=' + osp.basename(ref_file) + '\n')
-    oh.write('##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">\n')
-    oh.write('#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t' +
-             args.name + '\n')
+    oh.write('chrom\tpos\tref\t' + args.name + '\n')
     for c in sorted(filled_in_seq):
         r = str(ref_idx[c].seq)
         for i, b in enumerate(filled_in_seq[c]):
-            # TODO: need to get the ref/alt for multiple alleles
-            # and no variation working
-            gt = str(1-int(b == r[i]))
-            if b == 'N':
-                gt = '.'
-            if gt == '0':
-                alt = '.'
-            elif gt == '1':
-                alt = b
-            oh.write(c + '\t' + str(i+1) + '\t' + c + '-' + str(i+1) +
-                     '\t' + r[i] + '\t' + b + '\t' + '0\t.\t.\tGT\t' +
-                     str(1-int(b == r[i])) + '\n')
+            oh.write(c + '\t' + str(i+1) + '\t' + r[i] + '\t' + b + '\n')
