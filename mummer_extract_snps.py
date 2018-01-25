@@ -102,9 +102,10 @@ with open(args.snps, 'rb') as ih:
             dup = True
         if not dup and r != filled_in_seq[c][int(p)-1]:
             raise Exception('Ref does not match at %s %s' % (c, p))
-        prev = rs
-        q = iupac_combine(q, filled_in_seq[c][int(p)-1])
+        if dup:
+            q = iupac_combine(q, filled_in_seq[c][int(p)-1])
         filled_in_seq[c][int(p)-1] = q
+        prev = rs
 
 with open(args.output, 'wb') as oh:
     oh.write('chrom\tpos\tref\t' + args.name + '\n')
