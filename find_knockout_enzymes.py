@@ -3,12 +3,13 @@
     Find restriction enzymes for inserting a cassette into a gene and
     inserting the cassette + gene into a vector.
 
-    find_knockout_enzymes.py <gene sequence> <cassette sequence>
+    find_knockout_enzymes.py --output <output file>
+        <gene sequence> <cassette sequence>
         <enzymes> <vector sequence, start, end>
 
     start and end of target region should be 1-based, inclusive.
 
-    Assumes vector is circular.
+    Assumes vector is circular and restriction enzymes are palindromes.
 
     Options:
         --pad (100)     Amount of the gene sequence that should be
@@ -23,6 +24,7 @@
 """
 
 import argparse
+import itertools
 import re
 
 from Bio import SeqIO, Seq
@@ -89,33 +91,30 @@ def find_cut_sites2(seq, rs, trailing):
             matches.add((i+1, i+len(rs)))
         if rc_match:
             rc_matches.add((i+1, i+len(rc_rs)))
-    ## TODO: go through the matches and pick out the actual cut site
+    ## Go through the matches and pick out the actual cut site
     ## location. Only report if the cut site is in the target area.
     ## Then combine matches and rc_matches.
-    ## May need to treat rc and forward differently b/c of different
-    ## cut site location.
     cut_site_locs = set()
     start = trailing ## 1-based inclusive
     end = len(seq) - trailing + 1 ## 1-based inclusive
-    for m in matches:
-        if m[0] + cs >= start and m[0] + cs <= end:
-            cut_site_locs.add(m[0] + cs - trailing)
-        if m[0] + cs == end + 1:
-            cut_site_locs.add(end - trailing * 2)
-    ## This part needs to be tested:
-    for m in rc_matches:
-        print m[0], cs, trailing
-        if m[0] + rc_cs >= start and m[0] + rc_cs <= end:
-            cut_site_locs.add(m[0] + rc_cs - trailing)
-        if m[0] + rc_cs == end + 1:
-            cut_site_locs.add(end - trailing * 2)
+    for m1, m2 in itertools.izip(matches, rc_matches):
+        s1, s2 = None, None
+        if m1[0] + cs >= start and m1[0] + cs <= end:
+            s1 = m1[0] + cs - trailing
+        if m1[0] + cs == end + 1:
+            s1 = end - trailing * 2
+        if m2[0] + rc_cs >= start and m2[0] + rc_cs <= end:
+            s2 = m2[0] + rc_cs - trailing
+        if m2[0] + rc_cs == end + 1:
+            s2 = end - trailing * 2
+        if s1 is not None or s2 is not None:
+            cut_site_locs.add((s1, s2))
     return cut_site_locs
-
-raise Exception()
 
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--pad', type=int, default=100)
+parser.add_argument('--output')
 parser.add_argument('gene')
 parser.add_argument('cassette')
 parser.add_argument('enzymes')
@@ -135,26 +134,31 @@ vector_seq = str(SeqIO.read(args.vector[0], 'fasta').seq)
 target_vector_seq = vector_seq[(int(args.vector[1])-1):int(args.vector[2])]
 non_target_vector_seq = vector_seq[int(args.vector[2]):] + \
         vector_seq[:(int(args.vector[1])-1)]
+tvs_padded = vector_seq[(int(args.vector[1])-11):(int(args.vector[1])-1)] + \
+        target_vector_seq + \
+        vector_seq[int(args.vector[2]):(int(args.vector[2])+10)]
         
 ## Read enzyme cut sites
 cut_sites = {}
 with open(args.enzymes, 'rb') as ih:
     for line in ih:
         fields = line.strip().split('\t')
-        cut_sites[fields[0].strip()] = re.sub(' ', '', fields[1])
+        if ' ' not in fields[1]:
+            continue
+        cut_sites[fields[0].strip()] = fields[1]
 
 ## Search for cut sites in gene
 gene_enzymes = {}
 for enzyme, rs in cut_sites.iteritems():
-    match = find_cut_sites(gene_seq, rs)
+    match = find_cut_sites2(gene_seq, rs, 0)
     if len(match) > 0:
         gene_enzymes[enzyme] = match
 
 ## Search for cut sites in gene disregarding "padded" regions
 gene_nopad_enzymes = {}
-gene_nopad_seq = gene_seq[args.pad:(-(args.pad))]
+gene_nopad_seq = gene_seq[(args.pad-10):(-(args.pad-10))]
 for enzyme, rs in cut_sites.iteritems():
-    match = find_cut_sites(gene_nopad_seq, rs)
+    match = find_cut_sites2(gene_nopad_seq, rs, 10)
     if len(match) > 0:
         gene_nopad_enzymes[enzyme] = match
 
@@ -163,38 +167,60 @@ gene_pad_enzymes = {}
 gene_pad_seq_1 = gene_seq[:args.pad]
 gene_pad_seq_2 = gene_seq[(-(args.pad)):]
 for enzyme, rs in cut_sites.iteritems():
-    match = find_cut_sites(gene_pad_seq_1, rs)
+    match = find_cut_sites2(gene_pad_seq_1, rs, 0)
     if len(match) > 0:
         gene_pad_enzymes[enzyme] = match
 for enzyme, rs in cut_sites.iteritems():
-    match = find_cut_sites(gene_pad_seq_2, rs)
+    match = find_cut_sites2(gene_pad_seq_2, rs, 0)
     if len(match) > 0:
         gene_pad_enzymes[enzyme] = match
 
 ## Search for cut sites in cassette
 cassette_enzymes = {}
 for enzyme, rs in cut_sites.iteritems():
-    match = find_cut_sites(cassette_seq, rs)
+    match = find_cut_sites2(cassette_seq, rs, 0)
     if len(match) > 0:
         cassette_enzymes[enzyme] = match
 
 ## Search for cut sites in target region of vector
 target_vector_enzymes = {}
 for enzyme, rs in cut_sites.iteritems():
-    match = find_cut_sites(target_vector_seq, rs)
+    match = find_cut_sites2(tvs_padded, rs, 10)
     if len(match) > 0:
         target_vector_enzymes[enzyme] = match
 
 ## Search for cut sites in non-target region of vector
 non_target_vector_enzymes = {}
 for enzyme, rs in cut_sites.iteritems():
-    match = find_cut_sites(non_target_vector_seq, rs)
+    match = find_cut_sites2(non_target_vector_seq, rs, 0)
     if len(match) > 0:
         non_target_vector_enzymes[enzyme] = match
 
-import pdb; pdb.set_trace()
 ## Choose candidates
+gene_cutter_candidates = set(e for e, s in gene_nopad_enzymes.iteritems() if 0 < len(s) < 3) - \
+        set(gene_pad_enzymes) - \
+        set(cassette_enzymes)
+vector_cutter_candidates = set(target_vector_enzymes) - \
+        set(non_target_vector_enzymes) - \
+        set(gene_enzymes) - \
+        set(cassette_enzymes)
 
+print 'Step 1: %i candidates' % len(gene_cutter_candidates)
+print 'Step 2: %i candidates' % len(vector_cutter_candidates)
+
+## This should be added:
 ## Among candidates, make gene + cassette constructs and
 ## search for cut sites
 
+## Write output
+with open(args.output, 'wb') as oh:
+    oh.write('Gene candidates\n')
+    oh.write('Enzyme\tcut site\tnumber of gene cuts\n')
+    for e in gene_cutter_candidates:
+        oh.write(e + '\t' + cut_sites[e] + '\t' +
+                 str(len(gene_nopad_enzymes[e])) + '\n')
+    oh.write('\nPlasmid candidates\n')
+    oh.write('Enzyme\tcut site\tnumber of plasmid cuts\n')
+    for e in vector_cutter_candidates:
+        oh.write(e + '\t' + cut_sites[e] + '\t' +
+                 str(len(target_vector_enzymes[e])) + '\n')

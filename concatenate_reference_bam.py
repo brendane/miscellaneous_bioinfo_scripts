@@ -4,9 +4,12 @@
     genome in which the contigs were concatenated and separated by
     100 Ns. Also changes all the chromosome names to 'genome'.
 
-    concatenate_reference_bam.py <contig order>
+    concatenate_reference_bam.py [--file] [--gap (100)] <contig order>
 
     Writes to stdout and strips off all the tags.
+
+    UPDATE 26 Jan 2018: Now can read a file with contig order for
+    genomes with lots of contigs.
 """
 
 #==============================================================================#
@@ -19,14 +22,21 @@ import sys
 #==============================================================================#
 
 parser = argparse.ArgumentParser(usage=__doc__)
+parser.add_argument('--gap', type=int, default=100)
+parser.add_argument('--file', default=False, action='store_true')
 parser.add_argument('order', nargs='+')
 args = parser.parse_args()
 
-gap = 100
-
+gap = args.gap
 sq_order = args.order
 sq_lens = {}
 padding = {}
+
+if args.file:
+    sq_order = []
+    with open(args.order[0], 'rb') as ih:
+        for line in ih:
+            sq_order.append(line.strip())
 
 for line in sys.stdin:
     if line.startswith('@'):
