@@ -110,6 +110,6 @@ with open(args.snps, 'rb') as ih:
 with open(args.output, 'wb') as oh:
     oh.write('chrom\tpos\tref\t' + args.name + '\n')
     for c in sorted(filled_in_seq):
-        r = str(ref_idx[c].seq)
+        r = str(ref_idx[c].seq).upper()
         for i, b in enumerate(filled_in_seq[c]):
             oh.write(c + '\t' + str(i+1) + '\t' + r[i] + '\t' + b + '\n')

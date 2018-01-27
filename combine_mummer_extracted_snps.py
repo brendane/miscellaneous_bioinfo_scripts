@@ -58,7 +58,7 @@ for lines in itertools.izip(*file_handles):
                 pad += prev_pos + 1000
                 contigs.append((c, pad + 1))
             gt.append(int(p) + pad)
-            gt.append(fields[2])
+            gt.append(fields[2].upper())
             prev_contig = c
             prev_pos = int(p)
         else:
