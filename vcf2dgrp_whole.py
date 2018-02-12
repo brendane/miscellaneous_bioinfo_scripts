@@ -2,7 +2,7 @@
 """
     Transform a VCF file into a DGRP file. Targets entire genome.
 
-    vcf2dgrp.py --output <output file> <input file>
+    vcf2dgrp.py --reference <reference genome> --output <output file> <input file>
 
     OPTIONS
 
@@ -18,6 +18,7 @@
 import argparse
 import re
 
+from Bio import SeqIO
 import vcf
 
 #==============================================================================#
@@ -40,6 +41,7 @@ def ambighm(g):
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--output')
+parser.add_argument('--reference')
 parser.add_argument('--subset')
 parser.add_argument('--min-gt', default=0.0, type=float)
 parser.add_argument('--het-miss', default=False, action='store_true')
@@ -56,10 +58,21 @@ else:
             contig, _, pos = line.strip().split()[:3]
             positions.add((contig, pos))
 
+# Get offsets
 pad = 0
-prev_contig = None
-prev_pos = 0
 contigs = []
+pads = {}
+seq = SeqIO.index(args.reference, 'fasta')
+for c in sorted(seq):
+    contigs.append((c, pad +1))
+    pads[c] = pad
+    pad += len(seq[c])
+
+# Write contigs file
+with open(args.output + '.contigs', 'wb') as out:
+    for (c, s) in contigs:
+        out.write(c + '\t' + str(s) + '\n')
+
 with open(args.output, 'wb') as out:
     rdr = vcf.Reader(filename=args.input)
     out.write('genome,Ref,' + ','.join(rdr.samples) + '\n')
@@ -69,13 +82,7 @@ with open(args.output, 'wb') as out:
         if not rec.is_snp:
             continue
         c, p = rec.CHROM, rec.POS
-        if prev_contig is None:
-            contigs.append((c, pad + 1))
-        if prev_contig is not None and c != prev_contig:
-            pad += prev_pos + args.pad
-            contigs.append((c, pad + 1))
-        prev_pos = p
-        prev_contig = c
+        pad = pads[c]
         gts = []
         missed = 0
         for s in rec.samples:
@@ -96,8 +103,3 @@ with open(args.output, 'wb') as out:
             continue
         out.write(str(rec.POS + pad))
         out.write(',' + rec.REF + ',' + ','.join(str(g) for g in gts) + '\n')
-
-# Write contigs file
-with open(args.output + '.contigs', 'wb') as out:
-    for (c, s) in contigs:
-        out.write(c + '\t' + str(s) + '\n')
