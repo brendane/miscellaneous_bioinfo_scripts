@@ -43,7 +43,7 @@ if args.positions is not None:
             if row[0] not in order:
                 # If some contigs are not included
                 # Might be risky
-                print '%s not included in order file' % row[0]
+                print 'WARNING: %s not included in order file' % row[0]
                 continue
             pad = order[row[0]] - 1
             keep.append((int(row[1])+pad, int(row[2])+pad))
@@ -70,7 +70,6 @@ with open(args.output, 'wb') as oh:
                 if not found:
                     continue
             if filter_strains:
-                import pdb; pdb.set_trace()
                 row = row[:2] + [x for x, s in zip(row[2:], strain_cols) if s.upper() in strains]
             n = len(row) - 2
             ngt = sum(1. for b in row[2:] if b.upper() != 'N')

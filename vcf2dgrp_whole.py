@@ -66,7 +66,7 @@ seq = SeqIO.index(args.reference, 'fasta')
 for c in sorted(seq):
     contigs.append((c, pad +1))
     pads[c] = pad
-    pad += len(seq[c])
+    pad += len(seq[c]) + args.pad
 
 # Write contigs file
 with open(args.output + '.contigs', 'wb') as out:
