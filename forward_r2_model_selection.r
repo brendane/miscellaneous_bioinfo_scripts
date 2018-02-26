@@ -106,7 +106,7 @@ for(nv in 1:n_vars) {
         previous_vars_model = vars_in_this_model[1:(nv-1)]
         pv = XX[, previous_vars_model]
         rs = residuals(lm(y ~ pv))
-        cv = XX[, current_var]
+        cv = XX[!is.na(y), current_var]
         model2 = lm(rs ~ cv)
         r2_resid = summary(model2)$adj.r.squared
     } else {
@@ -132,7 +132,8 @@ for(nv in 1:n_vars) {
         }
     }
 
-    cat(nv, '\t', round(r2a, 3), '\t', round(r2, 3), round(r2_resid, 3),
+    cat(nv, '\t', round(r2a, 3), '\t', round(r2, 3), 
+        '\t', round(r2_resid, 3),
         '\t', round(gr2a/gr2ac, 3), '\t', round(gr2/gr2c, 3),
         '\t', length(variants_final),
         '\t', paste(ranks_final, collapse=','),
