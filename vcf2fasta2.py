@@ -7,8 +7,11 @@
         <depth file>
 
     --min-coverage      Minimum depth to count a site as covered
+    --replicon          Replicon to include
 
     Assumes only bi-allelic SNPs in VCF file, and only works on haploids.
+
+    UPDATE 05 March 2018: Can now work on a single replicon.
 """
 
 #==============================================================================#
@@ -24,6 +27,7 @@ import pysam
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--output')
+parser.add_argument('--replicon')
 parser.add_argument('--min-coverage', type=int)
 parser.add_argument('--max-pos', type=int, default=1E9)
 parser.add_argument('vcf')
@@ -37,10 +41,13 @@ depth_file_name = args.depth
 output_file_name = args.output
 min_coverage = args.min_coverage
 max_pos = args.max_pos
+replicon_to_use = args.replicon
 
 # Read reference sequence
 ref_seq = {}
 for rec in SeqIO.parse(ref_file_name, 'fasta'):
+    if replicon_to_use is not None and rec.id != replicon_to_use:
+        continue
     ref_seq[rec.id] = list(str(rec.seq))
 
 # Get variant positions from VCF file
@@ -54,6 +61,8 @@ for rec in vf:
     ref_pos = rec.pos
     ref_replicon = rec.chrom
     if ref_replicon not in ref_seq:
+        continue
+    if replicon_to_use is not None and ref_replicon != replicon_to_use:
         continue
     if ref_pos > max_pos:
         continue
