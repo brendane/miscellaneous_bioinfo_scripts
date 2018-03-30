@@ -31,6 +31,15 @@ def consense(bases):
         ret = iupac[''.join(sorted(list(bases)))]
     return ret
 
+def guess_strand(s):
+    seq = str(s.seq)
+    if seq[:3] == 'ATG' or seq[-3:] in {'TAA', 'TAG', 'TGA'}:
+        return '+'
+    elif seq[:3] in {'TTA', 'CTA', 'TCA'} or seq[-3:] == 'CAT':
+        return '-'
+    else:
+        return '+'
+
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--output')
 parser.add_argument('--tempdir')
@@ -229,7 +238,7 @@ for i, fname in enumerate(args.coords):
             f0_seq = info[tag][qf]['qry_flank_0']
             f1_seq = info[tag][qf]['qry_flank_1']
             cds_seq = full_seq[len(f0_seq):(len(full_seq)-len(f1_seq))]
-            if info[tag][qf]['strand'] == '-':
+            if guess_strand(cds_seq) == '-':
                 full_seq.seq = Seq.reverse_complement(full_seq.seq)
                 cds_seq.seq = Seq.reverse_complement(cds_seq.seq)
                 tmp = f0_seq
