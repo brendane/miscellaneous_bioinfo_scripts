@@ -57,9 +57,9 @@ missingness = missingness[keep]
 
 
 ## Draw fitness effects
-if(is.na(as.numeric(n_snps))) {
+if(!is.na(as.numeric(n_snps))) {
     ## Set a few SNPs to fitness effect of 1, all others = 0
-    ns = as.numeric(s_snps)
+    ns = as.numeric(n_snps)
     x = rep(0, nrow(genotypes))
     x[sample(1:nrow(genotypes), ns, FALSE)] = sample(c(1, -1), ns, TRUE,
                                                      prob=c(1-ref_allele_more_fit, ref_allele_more_fit))
@@ -130,7 +130,7 @@ write.table(cbind(names(relative_fitnesses), names(relative_fitnesses), relative
 
 ##  3. Table of fitness effects and allele frequency start and end for
 ##     each SNP
-write.table(data.frame(genotype_names, 'effect'=snp_effects,
+write.table(data.frame(genotype_names, 'effect'=snp_fitness_effects,
                        'initial'=initial_allele_freqs,
                        'final'=allele_freqs),
             file=paste0(output_prefix, '.snp_effects.txt'),
