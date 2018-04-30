@@ -86,7 +86,7 @@ if(!is.na(as.numeric(n_snps))) {
 ## Note that in the genotype input file 1 = reference, 0 = alternate
 snp_effects =
     apply(genotypes, 2, function(x) {
-          snp_fitness_effects * ifelse(snp_fitness_effects < 0, x, 1-x)
+          snp_fitness_effects * ifelse(snp_fitness_effects < 0, -x, 1-x)
          }) %>%
     apply(., 1, function(x) {
           mw = mean(x, na.rm=TRUE)
@@ -97,9 +97,10 @@ fitnesses = colSums(snp_effects) / mean(colSums(snp_effects))
 
 ## Calculate final strain frequencies assuming equal starting frequencies.
 ## Uses Wrightian fitness (fitness = average number of offspring).
-initial_strain_freqs = rep(1/length(fitnesses[[1]]), length(fitnesses[[1]]))
+initial_strain_freqs = rep(1/length(fitnesses), length(fitnesses))
 n_inds = (fitnesses^n_generations)
 strain_freqs = n_inds / sum(n_inds)
+stopifnot(all(strain_freqs >= 0))
 relative_fitnesses = log2(strain_freqs / initial_strain_freqs)
 ## If fitness = 0, need to do a rough correction:
 relative_fitnesses[is.na(relative_fitnesses) | is.infinite(relative_fitnesses)] =
@@ -113,6 +114,7 @@ allele_freqs = apply(genotypes, 1, function(x) {
                      alt = sum(strain_freqs[!(is.na(x)) & x == 0])
                      ref / (ref + alt)
          })
+stopifnot(all(allele_freqs >= 0 & allele_freqs <= 1))
 
 
 ## Write output:
