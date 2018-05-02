@@ -8,6 +8,7 @@
 # an effect (all others set to zero).
 #
 
+library(boot)
 library(data.table)
 library(dplyr)
 library(dtplyr)
@@ -117,6 +118,73 @@ allele_freqs = apply(genotypes, 1, function(x) {
 stopifnot(all(allele_freqs >= 0 & allele_freqs <= 1))
 
 
+## Calculate LD groups from final strain frequencies for the top 2000
+## snps (by allele frequency change); note groups with ties may not
+## be completely included in the top 5000. Order of ties is arbitrary.
+n_ld = 5000
+af_change = abs(allele_freqs - initial_allele_freqs)
+af_order = order(order(af_change, decreasing=TRUE))
+ld_groups_95 = numeric(length(af_change)) * NaN
+grp = -1
+for(i in 1:(n_ld-1)) {
+    ii = which(af_order == i)
+    if(!is.na(ld_groups_95[ii])) next
+    grp = grp + 1
+    ld_groups_95[ii] = grp
+    for(j in (i+1):n_ld) {
+        jj = which(af_order == j)
+        if(!is.na(ld_groups_95[jj])) next
+        g = cbind(genotypes[ii, ], genotypes[jj, ])
+        r2 = (corr(g[!(is.na(g[, 1])) & !(is.na(g[, 2])), ],
+                   w=strain_freqs[!(is.na(g[, 1])) & !(is.na(g[, 2]))]))^2
+        if(is.na(r2)) {
+           warning(paste('R^2 is NA at', genotype_names[['rs']][i],
+                         genotype_names[['rs']][j]))
+           next
+         }
+        if(r2 >= 0.95) {
+            ld_groups_95[jj] = grp
+        }
+    }
+}
+i = n_ld
+ii = which(af_order == i)
+if(is.na(ld_groups_95[ii])) {
+    grp = grp + 1
+    ld_groups_95[ii] = grp
+}
+
+ld_groups_80 = numeric(length(af_change)) * NaN
+grp = -1
+for(i in 1:(n_ld-1)) {
+    ii = which(af_order == i)
+    if(!is.na(ld_groups_80[ii])) next
+    grp = grp + 1
+    ld_groups_80[ii] = grp
+    for(j in (i+1):n_ld) {
+        jj = which(af_order == j)
+        if(!is.na(ld_groups_80[jj])) next
+        g = cbind(genotypes[ii, ], genotypes[jj, ])
+        r2 = (corr(g[!(is.na(g[, 1])) & !(is.na(g[, 2])), ],
+                   w=strain_freqs[!(is.na(g[, 1])) & !(is.na(g[, 2]))]))^2
+        if(is.na(r2)) {
+           warning(paste('R^2 is NA at', genotype_names[['rs']][i],
+                         genotype_names[['rs']][j]))
+           next
+         }
+        if(r2 >= 0.80) {
+            ld_groups_80[jj] = grp
+        }
+    }
+}
+i = n_ld
+ii = which(af_order == i)
+if(is.na(ld_groups_80[ii])) {
+    grp = grp + 1
+    ld_groups_80[ii] = grp
+}
+
+
 ## Write output:
 
 ##  1. Phenotype file for Plink with fitness of strains
@@ -134,7 +202,9 @@ write.table(cbind(names(relative_fitnesses), names(relative_fitnesses), relative
 ##     each SNP
 write.table(data.frame(genotype_names, 'effect'=snp_fitness_effects,
                        'initial'=initial_allele_freqs,
-                       'final'=allele_freqs),
+                       'final'=allele_freqs,
+                       'ld_95'=ld_groups_95,
+                       'ld_80'=ld_groups_80),
             file=paste0(output_prefix, '.snp_effects.txt'),
             sep='\t', col.names=TRUE, row.names=FALSE, quote=FALSE)
 
