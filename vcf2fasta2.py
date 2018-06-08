@@ -8,10 +8,13 @@
 
     --min-coverage      Minimum depth to count a site as covered
     --replicon          Replicon to include
+    --maf               Minimum minor allele frequency
 
     Assumes only bi-allelic SNPs in VCF file, and only works on haploids.
 
     UPDATE 05 March 2018: Can now work on a single replicon.
+
+    UPDATE 08 June 2018: Added minor allele frequency filter
 """
 
 #==============================================================================#
@@ -30,6 +33,7 @@ parser.add_argument('--output')
 parser.add_argument('--replicon')
 parser.add_argument('--min-coverage', type=int)
 parser.add_argument('--max-pos', type=int, default=1E9)
+parser.add_argument('--maf', type=float, default=0.)
 parser.add_argument('vcf')
 parser.add_argument('ref')
 parser.add_argument('depth')
@@ -41,6 +45,7 @@ depth_file_name = args.depth
 output_file_name = args.output
 min_coverage = args.min_coverage
 max_pos = args.max_pos
+min_maf = args.maf
 replicon_to_use = args.replicon
 
 # Read reference sequence
@@ -66,12 +71,27 @@ for rec in vf:
         continue
     if ref_pos > max_pos:
         continue
+    ref_allele = None
+    ref_count = 0
+    alt_count = 0
     for sample in rec.samples:
         sample_data = rec.samples[sample]
         gt = sample_data.alleles[0]
         if gt is None or (len(sample_data['GT']) > 1 and sample_data.alleles[1] != gt):
             gt = 'N'
+        if gt != 'N':
+            if ref_allele is None or gt == ref_allele:
+                ref_allele = gt
+                ref_count += 1
+            else:
+                alt_count += 1
         snps[sample][(ref_replicon, ref_pos)] = gt
+    if min_maf > 0.:
+        maf = float(ref_count) / (alt_count + ref_count)
+        if maf < min_maf or (1 - maf) < min_maf:
+            for sample in rec.samples:
+                snps[sample][(ref_replicon, ref_pos)] = 'N'
+        
 
 # Process the depth file
 not_covered = {s:set() for s in strains}
@@ -96,7 +116,4 @@ with open(output_file_name, 'wb') as out:
         seq = []
         for replicon_sequence in sequence.itervalues():
             seq += replicon_sequence
-        try:
-            out.write(''.join(seq) + '\n')
-        except TypeError:
-            import pdb; pdb.set_trace()
+        out.write(''.join(seq) + '\n')
