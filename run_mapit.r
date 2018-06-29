@@ -84,8 +84,8 @@ cat('Running MAPIT\n', file=stderr())
 mapit = MAPIT(X_filt, Y_filt, hybrid=FALSE, test='davies')
 
 ## Write output files
-png(paste0(outprefix,'.qqplots.png'))
-ggd.qqplot(mapit[['pvalues']])
+#png(paste0(outprefix,'.qqplots.png'))
+#ggd.qqplot(mapit[['pvalues']])
 
 write.table(data.frame('rs'=rownames(X_filt),
                        'p'=mapit[['pvalues']],
