@@ -12,8 +12,7 @@
 # phenotypes is a two column file, with no header. The first column should
 # be the strain and the second column should be the phenotype value.
 #
-# The p-values are calculated with the Davies method, which is the most
-# accurate, though slowest, method available in MAPIT.
+# The p-values are calculated with the hybrid method to save time.
 #
 
 library(data.table)
@@ -81,7 +80,7 @@ Y_filt = Y[!is.na(Y)]
 cat('Running MAPIT\n', file=stderr())
 
 ## Run mapit with Davie's method for calculating p-values
-mapit = MAPIT(X_filt, Y_filt, hybrid=FALSE, test='davies')
+mapit = MAPIT(X_filt, Y_filt, hybrid=TRUE)
 
 ## Write output files
 #png(paste0(outprefix,'.qqplots.png'))
