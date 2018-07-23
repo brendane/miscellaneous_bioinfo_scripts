@@ -32,7 +32,16 @@ to_swap.sort(key=lambda x: (x[0], x[1], x[2]))
 
 with open(args.output, 'wb') as oh:
     rdr = vcf.Reader(filename=args.vcf)
+    wtr = vcf.Writer(oh, rdr)
+    samples = rdr.samples
     for rec in rdr:
-        swap = []
         for ts in to_swap:
-            if ts[0] == rec.CHROM and rec.POS >= ts[1] and rec.POS <= ts[2]
+            if ts[0] == rec.CHROM and rec.POS >= ts[1] and rec.POS <= ts[2]:
+                i = samples.index(ts[3])
+                j = samples.index(ts[4])
+                tmp = rec.samples[i]
+                rec.samples[i] = rec.samples[j]
+                rec.samples[j] = swap
+        wtr.write_record(rec)
+    wtr.flush()
+    wtr.close()
