@@ -14,6 +14,7 @@
 """
 
 import argparse
+import csv
 
 import vcf
 
@@ -41,7 +42,7 @@ with open(args.output, 'wb') as oh:
                 j = samples.index(ts[4])
                 tmp = rec.samples[i]
                 rec.samples[i] = rec.samples[j]
-                rec.samples[j] = swap
+                rec.samples[j] = tmp
         wtr.write_record(rec)
     wtr.flush()
     wtr.close()
