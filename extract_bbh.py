@@ -1,9 +1,13 @@
 #!/usr/bin/env python2.7
 """
     Given a three column tsv file, extract BBHs. Expects taxon name to
-    be the first element separated by "::".
+    be the first element separated by "::". If the input has more columns,
+    assumes these are gene lengths.
 
     extract_bbh.py <input file>
+
+    Update 25 Aug 2018: Ability to handle more than three columns; also
+    a bug fix.
 """
 
 import csv
@@ -15,6 +19,7 @@ import networkx as nx
 # Read in the data
 scores = {}
 seqs = set()
+lengths = {}
 with open(sys.argv[1], 'rb') as ih:
     rdr = csv.reader(ih, delimiter='\t')
     for row in rdr:
@@ -25,6 +30,9 @@ with open(sys.argv[1], 'rb') as ih:
         if s0 not in scores:
             scores[s0] = {}
         scores[s0][s1] = score
+        if len(row) > 3:
+            lengths[s0] = int(row[3])
+            lengths[s1] = int(row[4])
 
 # Get the best hit for each sequence
 best_hit_graph = nx.Graph()
@@ -34,6 +42,7 @@ for s in seqs:
         hits = scores[s]
     except KeyError:
         sys.stderr.write('Skipping %s\n' %s)
+        continue
     best_score = max(hits.values())
     best_hits[s] = []
     for s1, scr in hits.iteritems():
@@ -85,7 +94,10 @@ for c in components:
 taxa = sorted(taxa)
 if len(taxa) != 2:
     raise Exception('Wrong number of taxa: %i' % len(taxa))
-sys.stdout.write('type\tortholog\t' + taxa[0] + '\t' + taxa[1] + '\n')
+e = ''
+if len(lengths) > 0:
+    e = '\t' + taxa[0] + '_length\t' + taxa[1] + '_length'
+sys.stdout.write('type\tortholog\t' + taxa[0] + '\t' + taxa[1] + e + '\n')
 k = 0
 for comps, cmptype in itertools.izip([o_o, o_m, m_m], ['1-1', '1-M', 'M-M']):
     for c in comps:
@@ -94,5 +106,8 @@ for comps, cmptype in itertools.izip([o_o, o_m, m_m], ['1-1', '1-M', 'M-M']):
             t = s.split('::')[0]
             c_seqs[t].append(s)
         for p in itertools.product(c_seqs[taxa[0]], c_seqs[taxa[1]]):
-            sys.stdout.write(cmptype + '\t' + str(k) + '\t' + p[0] + '\t' + p[1] + '\n')
+            l = ''
+            if len(lengths) > 0:
+                l = '\t' + str(lengths[p[0]]) + '\t' + str(lengths[p[1]])
+            sys.stdout.write(cmptype + '\t' + str(k) + '\t' + p[0] + '\t' + p[1] + l + '\n')
         k += 1
