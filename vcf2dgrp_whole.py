@@ -11,6 +11,11 @@
         --min-gt        Minimum genotyping rate (0)
         --het-miss      Set heterozygous sites to missing
         --pad           Size of pad between contigs (1000)
+        --reference-name Name of reference strain; include reference as
+                        a sample
+
+    UPDATE 02 Oct 2018: added option to include reference alleles as
+    a sample.
 """
 
 #==============================================================================#
@@ -46,6 +51,7 @@ parser.add_argument('--subset')
 parser.add_argument('--min-gt', default=0.0, type=float)
 parser.add_argument('--het-miss', default=False, action='store_true')
 parser.add_argument('--pad', default=1000, type=int)
+parser.add_argument('--reference-name', default=None)
 parser.add_argument('input')
 args = parser.parse_args()
 
@@ -57,6 +63,9 @@ else:
         for line in handle:
             contig, _, pos = line.strip().split()[:3]
             positions.add((contig, pos))
+
+ref_name = args.reference_name
+use_ref_sample = ref_name is not None
 
 # Get offsets
 pad = 0
@@ -75,7 +84,10 @@ with open(args.output + '.contigs', 'wb') as out:
 
 with open(args.output, 'wb') as out:
     rdr = vcf.Reader(filename=args.input)
-    out.write('genome,Ref,' + ','.join(rdr.samples) + '\n')
+    if use_ref_sample:
+        out.write('genome,Ref,' + ref_name + ',' + ','.join(rdr.samples) + '\n')
+    else:
+        out.write('genome,Ref,' + ','.join(rdr.samples) + '\n')
     for i, rec in enumerate(rdr):
         if (positions is not None) and ((rec.CHROM, str(rec.POS)) not in positions):
             continue
@@ -102,4 +114,7 @@ with open(args.output, 'wb') as out:
         if 1 - (missed / float(len(gts))) < args.min_gt:
             continue
         out.write(str(rec.POS + pad))
-        out.write(',' + rec.REF + ',' + ','.join(str(g) for g in gts) + '\n')
+        if use_ref_sample:
+            out.write(',' + rec.REF + ',' + rec.REF + ',' + ','.join(str(g) for g in gts) + '\n')
+        else:
+            out.write(',' + rec.REF + ',' + ','.join(str(g) for g in gts) + '\n')
