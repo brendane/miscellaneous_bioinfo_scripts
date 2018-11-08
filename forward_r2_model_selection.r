@@ -116,6 +116,9 @@ for(nv in 1:n_vars) {
     coefs_final = model$coefficients
     variants_final = variants[ranks_final]
     ft = model$fitted.values
+
+    ## LD between variants included in the model and other variants
+    ## measured using a randomly selected subset to reduce run time.
     gr2 = 0
     gr2c = 0
     gr2a = 0
