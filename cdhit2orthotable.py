@@ -65,6 +65,8 @@ with open(outfile, 'wb') as oh:
     oh.write('cdhit_ortholog\tstrain\tgene\n')
     for c in cls:
         for strain, genes in clusters[c].iteritems():
+            if strain not in strain_map:
+                continue
             s = strain_map[strain]
             for gene in genes:
                 oh.write('Cluster' + str(c) + '\t' + s + '\t' + gene + '\n')
