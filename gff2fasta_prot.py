@@ -36,8 +36,9 @@ with open(args.gff, 'rb') as ih:
         lt = {x.split('=')[0]:x.split('=')[1]
               for x in row[8].split(';')}['locus_tag']
         if end > lengths[chrom]-1:
-            seq = idx[chrom][start:] + \
-                    idx[chrom][0:(end-lengths[chrom])]
+            #seq = idx[chrom][start:] + \
+            #        idx[chrom][0:(end-lengths[chrom])]
+            seq = idx[chrom][start:]
         else:
                 seq = idx[chrom][start:end]
         overhang = 3 - (len(seq) % 3)
