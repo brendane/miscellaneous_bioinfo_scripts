@@ -3,7 +3,7 @@
     Given a gff file and a fasta file, output a file with protein
     translations of genes.
 
-    gff2fasta_prot.py [--prefix <prefix>] <gff> <fasta>
+    gff2fasta_prot.py [--id <id field (locus_tag)>] [--prefix <prefix>] <gff> <fasta>
 """
 
 import argparse
@@ -14,17 +14,19 @@ from Bio import SeqIO, Seq
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--prefix')
+parser.add_argument('--id', default='locus_tag')
 parser.add_argument('gff')
 parser.add_argument('fasta')
 args = parser.parse_args()
 
+id_field = args.id
 if args.prefix is not None:
     prefix = args.prefix
 else:
     prefix = ''
 
-idx = SeqIO.index(args.fasta, 'fasta')
-lengths = {i:len(idx[i]) for i in idx}
+seqs = {rec.id:rec for rec in SeqIO.parse(args.fasta, 'fasta')}
+lengths = {i:len(seqs[i]) for i in seqs}
 
 with open(args.gff, 'rb') as ih:
     rdr = csv.reader(ih, delimiter='\t')
@@ -34,13 +36,13 @@ with open(args.gff, 'rb') as ih:
         end = int(row[4])
         strand = row[6]
         lt = {x.split('=')[0]:x.split('=')[1]
-              for x in row[8].split(';')}['locus_tag']
+              for x in row[8].split(';')}[id_field]
         if end > lengths[chrom]-1:
-            #seq = idx[chrom][start:] + \
-            #        idx[chrom][0:(end-lengths[chrom])]
-            seq = idx[chrom][start:]
+            #seq = seqs[chrom][start:] + \
+            #        seqs[chrom][0:(end-lengths[chrom])]
+            seq = seqs[chrom][start:]
         else:
-                seq = idx[chrom][start:end]
+                seq = seqs[chrom][start:end]
         overhang = 3 - (len(seq) % 3)
         if overhang != 3:
             seq.seq += 'N' * overhang
