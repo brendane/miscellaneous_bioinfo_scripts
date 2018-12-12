@@ -3,7 +3,7 @@
     Using a VCF file, a reference genome, and a table of read-depths,
     make a FASTA file for a list of individuals.
 
-    vcf2fasta.pyt --output <output file> [OPTIONS] <vcf> <reference>
+    vcf2fasta.py --output <output file> [OPTIONS] <vcf> <reference>
         <depth file>
 
     --min-coverage      Minimum depth to count a site as covered
