@@ -3,7 +3,7 @@
     Calculate betweenness centrality fo plant and bacterial genes using
     networkx. Relies on having a very specific input data structure.
 
-    betweenness_centrality_plant_bacteria.py <adjacency file>
+    betweenness_centrality_plant_bacteria.py <adjacency file> <threshold>
 """
 
 import csv
@@ -13,8 +13,11 @@ import networkx as nx
 from networkx.algorithms.centrality.betweenness_subset import betweenness_centrality_subset as bcs
 from networkx.algorithms.centrality.betweenness import betweenness_centrality as bc
 
+thresh = float(sys.argv[2])
+
 ## Make the graph
 g = nx.Graph()
+x = 0
 with open(sys.argv[1], 'r') as ih:
     rdr = csv.reader(ih, delimiter='\t')
     for i, row in enumerate(rdr):
@@ -31,9 +34,12 @@ with open(sys.argv[1], 'r') as ih:
                 if j < i:
                     ## Note: first row of file is the header, so j < i, not j <= i
                     continue
+                if weight < thresh:
+                    continue
                 d = 1-weight
                 g.add_edge(focal_gene, gene, weight=weight, dist=d)
-                
+                x += 1
+print(x) 
 
 b = bc(g, normalized=False, weight='dist')
 bp = bcs(g, sources=plant_genes, targets=plant_genes,
