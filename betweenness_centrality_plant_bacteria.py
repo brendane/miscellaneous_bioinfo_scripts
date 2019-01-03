@@ -17,7 +17,6 @@ thresh = float(sys.argv[2])
 
 ## Make the graph
 g = nx.Graph()
-x = 0
 with open(sys.argv[1], 'r') as ih:
     rdr = csv.reader(ih, delimiter='\t')
     for i, row in enumerate(rdr):
@@ -38,16 +37,16 @@ with open(sys.argv[1], 'r') as ih:
                     continue
                 d = 1-weight
                 g.add_edge(focal_gene, gene, weight=weight, dist=d)
-                x += 1
-print(x) 
 
-b = bc(g, normalized=False, weight='dist')
-bp = bcs(g, sources=plant_genes, targets=plant_genes,
-        normalized=False, weight='dist')
+sys.stdout.write('gene\tcomparison\tbetweenness\n')
 bb = bcs(g, sources=bact_genes, targets=bact_genes,
         normalized=False, weight='dist')
-
-sys.stdout.write('gene\tbetweenness\tbetweenness_plant\tbetweenness_bacteria\n')
 for gene in genes:
-    sys.stdout.write(gene + '\t' + str(b[gene]) + '\t' +
-                     str(bp[gene]) + '\t' + str(bb[gene]) + '\n')
+    sys.stdout.write(gene + '\tbacteria\t' + str(bb[gene]) + '\n')
+bp = bcs(g, sources=plant_genes, targets=plant_genes,
+        normalized=False, weight='dist')
+for gene in genes:
+    sys.stdout.write(gene + '\tplant\t' + str(bp[gene]) + '\n')
+b = bc(g, normalized=False, weight='dist')
+for gene in genes:
+    sys.stdout.write(gene + '\tall\t' + str(b[gene]) + '\n')
