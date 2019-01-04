@@ -37,6 +37,7 @@ with open(sys.argv[1], 'r') as ih:
                     continue
                 d = 1-weight
                 g.add_edge(focal_gene, gene, weight=weight, dist=d)
+sys.stderr.write('Graph construction finished\n')
 
 sys.stdout.write('gene\tcomparison\tbetweenness\n')
 bb = bcs(g, sources=bact_genes, targets=bact_genes,
