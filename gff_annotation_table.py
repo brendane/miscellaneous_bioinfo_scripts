@@ -30,6 +30,8 @@ sys.stdout.write('\t'.join(cols) + '\n')
 with open(args.infile, 'rb') as ih:
     rdr = csv.reader(ih, delimiter='\t')
     for row in rdr:
+        if row[0].startswith('#'):
+            continue
         data = {}
         data['contig'] = row[0]
         data['start'] = row[3]
