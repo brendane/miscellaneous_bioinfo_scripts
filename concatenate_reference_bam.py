@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 """
     Modify a bam file so that it appears as if it was aligned to a
     genome in which the contigs were concatenated and separated by

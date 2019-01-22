@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 """
     Concatenate the records in a FASTA file with 100 Ns in
     between.
