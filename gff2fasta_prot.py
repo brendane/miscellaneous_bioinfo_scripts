@@ -3,7 +3,7 @@
     Given a gff file and a fasta file, output a file with protein
     translations of genes.
 
-    gff2fasta_prot.py [--no-dups] [--id <id field (locus_tag)>]
+    gff2fasta_prot.py [--eliminate-identical] [--id <id field (locus_tag)>]
         [--table <trans table (Bacterial)>]
         [--prefix <prefix>] <gff> <fasta>
 
@@ -13,12 +13,17 @@
     with complete codons after reverse-complementing and before
     translation.
 
-    If the id field is not present, the record is skipped. If the
-    no-dups flag is set, sequences with the same name and length
-    are skipped after they are first seen.
+    If the id field is not present, the record is skipped. Sequences
+    with the same name and length are skipped after they are first
+    seen. (This has always been the default -- the --no-dups flag
+    never did anything and has been removed.)
+
+    --eliminate-identical reports only the first of identical 
+    protein sequences.
 """
 
 import argparse
+import collections
 import csv
 import sys
 
@@ -29,22 +34,26 @@ parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--prefix')
 parser.add_argument('--table', default='Bacterial')
 parser.add_argument('--id', default='locus_tag')
-parser.add_argument('--no-dups', default=False, action='store_true')
+parser.add_argument('--eliminate-identical')
 parser.add_argument('gff')
 parser.add_argument('fasta')
 args = parser.parse_args()
 
 table = args.table
 id_field = args.id
-nd = args.no_dups
 if args.prefix is not None:
     prefix = args.prefix
 else:
     prefix = ''
+ei = False
+if args.eliminate_identical is not None:
+    ei = True
+    dup_output = args.eliminate_identical
 
 seqs = {rec.id:rec for rec in SeqIO.parse(args.fasta, 'fasta')}
 lengths = {i:len(seqs[i]) for i in seqs}
 seen = {}
+prot_seqs = collections.defaultdict(list)
 
 with open(args.gff, 'rb') as ih:
     rdr = csv.reader(ih, delimiter='\t')
@@ -65,7 +74,7 @@ with open(args.gff, 'rb') as ih:
             #        seqs[chrom][0:(end-lengths[chrom])]
             seq = seqs[chrom][start:]
         else:
-                seq = seqs[chrom][start:end]
+            seq = seqs[chrom][start:end]
         if lt in seen and seen[lt] == len(seq):
             continue
         seen[lt] = len(seq)
@@ -74,8 +83,17 @@ with open(args.gff, 'rb') as ih:
         overhang = 3 - (len(seq) % 3)
         if overhang != 3:
             seq.seq += 'N' * overhang
-        sys.stdout.write('>' + prefix + lt + '\n')
         try:
-            sys.stdout.write(str(seq.seq.translate(table=table, cds=True)) + '\n')
+            p = str(seq.seq.translate(table=table, cds=True))
         except TranslationError:
-            sys.stdout.write(str(seq.seq.translate(table=table)) + '\n')
+            p = str(seq.seq.translate(table=table))
+        if (not ei) or (p not in prot_seqs):
+            sys.stdout.write('>' + prefix + lt + '\n')
+            sys.stdout.write(p + '\n')
+        if ei:
+            prot_seqs[p].append(prefix + lt)
+
+if ei:
+    with open(dup_output, 'w') as oh:
+        for p, lts in prot_seqs.iteritems():
+            oh.write('\t'.join(lts) + '\n')
