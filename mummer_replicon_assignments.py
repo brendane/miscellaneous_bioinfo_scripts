@@ -23,7 +23,7 @@ import sys
 replicons = set()
 lengths = {}
 cov = {}
-with open(sys.argv[1], 'rb') as handle:
+with open(sys.argv[1], 'r') as handle:
     for i in range(4): handle.readline()
     rdr = csv.reader(handle, delimiter='\t')
     for qry, rows in itertools.groupby(rdr, lambda x: x[10]):

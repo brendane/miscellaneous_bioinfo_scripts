@@ -22,5 +22,5 @@ with open(sys.argv[2], 'r') as ih:
 
 for rec in SeqIO.parse(sys.argv[1], 'fasta'):
     r = replicons[rec.id]
-    sys.stdout.write(r + ':' + rec.id + '\n')
+    sys.stdout.write('>' + r + ':' + rec.id + '\n')
     sys.stdout.write(str(rec.seq) + '\n')
