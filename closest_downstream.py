@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 """
     Process a bed file from bedtools closest -D to get the nearest
     downstream feature is within a certain distance and isn't "blocked"
