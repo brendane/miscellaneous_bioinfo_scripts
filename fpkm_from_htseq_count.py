@@ -56,5 +56,5 @@ total = sum(count.values())
 with open(outpre + '.fpkm.tsv', 'w') as oh:
     for g, c in count.iteritems():
         gl = gene_lengths[g]
-        fpkm = (10E9 * c) / (total * gl)
+        fpkm = (1E9 * c) / (total * gl)
         oh.write(g + '\t' + str(fpkm) + '\n')
