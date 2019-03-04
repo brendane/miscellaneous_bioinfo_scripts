@@ -33,6 +33,7 @@ with open(args.gff, 'r') as ih:
         else:
             continue
 
+nogid = set()
 go_annot = {}
 gene_go = collections.defaultdict(set)
 errors = set()
@@ -43,16 +44,14 @@ with open(args.ensembl, 'r') as ih:
         estart = int(row['Gene start (bp)'])
         eend = int(row['Gene end (bp)'])
         desc = row['Gene description']
-        if 'NCBI' not in desc:
-            errors.add(('%s in ensembl but not ncbi' % egid))
-            continue
-        gid = re.sub('\]', '',
-                     re.sub('.+ \[Source:NCBI gene;Acc:', '', desc))
+        gid = row['NCBI gene ID']
         echrom = row['Chromosome/scaffold name']
         go = row['GO term accession']
         go_desc = row['GO term name']
         if gid not in gff_info:
+            if gid == '': nogid.add(egid)
             errors.add(('%s in ensembl but not ncbi' % gid))
+            continue
         if gff_info[gid][1] != estart:
             errors.add(('%s positions do not match (%i, %i) in ncbi and (%i, %i) in ens.'
                         %(gid, gff_info[gid][1], gff_info[gid][2], estart, eend)))
@@ -61,3 +60,7 @@ with open(args.ensembl, 'r') as ih:
 
 for error in errors:
     sys.stdout.write(error + '\n')
+print('No NCBI gene ID: %i' % len(nogid))
+
+print('NCBI genes annotated: %i' % len(gene_go))
+print('Total NCBI genes in gff %i' %len(gff_info))
