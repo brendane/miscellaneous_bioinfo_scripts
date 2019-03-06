@@ -21,6 +21,7 @@ args = parser.parse_args()
 
 gff_info = {}
 gene_order = []
+gid_map = {}
 with open(args.gff, 'r') as ih:
     rdr = csv.reader(ih, delimiter='\t')
     for row in rdr:
@@ -35,6 +36,7 @@ with open(args.gff, 'r') as ih:
                          {x.split('=')[0]:x.split('=')[1] for x in annot.split(';')}['ID'])
             gff_info[gid] = (chrom, start, end)
             gene_order.append(gid)
+            gid_map[gid] = len(gid_map) + 1
         else:
             continue
 
@@ -63,9 +65,11 @@ with open(args.output + '.genelocs.tsv', 'w') as oh:
         except KeyError:
             n = ''
         oh.write(chrom + '\t' + str(start) + '\t' + str(stop) + '\t' +
-                 gid + '\t' + n + '\n')
+                 str(gid_map[gid]) + '\t' + n + '\n')
 
 with open(args.output + '.goterms.tsv', 'w') as oh:
-    for gid in gene_go:
+    for gid in gene_order:
+        if gid not in gene_go:
+            continue
         for go in gene_go[gid]:
-            oh.write(gid + '\t' + go + '\t' + go_annot[go] + '\n')
+            oh.write(str(gid_map[gid]) + '\t' + go + '\t' + go_annot[go] + '\n')
