@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 """
     Get the top variant p-value for each gene in USDA1106
+
+    Output:
+        gene
+        most significant p-value
+        number of variants in gene (or LD groups?)
+        mean of -log(p) values of all variants (or LD groups?) in gene
 """
 
 import argparse
 import collections
 import csv
 import gzip
+import math
 import re
 
 def get_tags(gffstring):
@@ -68,6 +75,8 @@ with ofun(args.cdhit, 'rt') as ih:
 
 
 top_vars = collections.defaultdict(lambda: 1)
+all_vars = collections.defaultdict(lambda: 1)
+n_vars = collections.defaultdict(lambda: 1)
 ofun = open
 if args.gwas.endswith('.gz'):
     ofun = gzip.open
@@ -85,10 +94,15 @@ with ofun(args.gwas, 'rt') as ih:
                 for gg in gs:
                     if p < top_vars[gg]:
                         top_vars[gg] = p
+                        n_vars[gg] += 1
+                        all_vars[gg].append(-math.log(p))
             else:
                 if p < top_vars[g]:
                     top_vars[g] = p
+                    n_vars[g] += 1
+                    all_vars[g].append(-math.log(p))
 with open(args.output, 'w') as oh:
     for g in top_vars:
         if g != '.':
-            oh.write(g + '\t' + str(top_vars[g]) + '\n')
+            oh.write(g + '\t' + str(top_vars[g]) + '\t' + str(n_vars[g]) +
+                     '\t' + str(sum(all_vars[g])/n_vars[g]) + '\n')
