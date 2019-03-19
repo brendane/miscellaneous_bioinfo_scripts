@@ -75,7 +75,7 @@ with ofun(args.cdhit, 'rt') as ih:
 
 
 top_vars = collections.defaultdict(lambda: 1)
-all_vars = collections.defaultdict(lambda: 1)
+all_vars = collections.defaultdict(list)
 n_vars = collections.defaultdict(lambda: 1)
 ofun = open
 if args.gwas.endswith('.gz'):
