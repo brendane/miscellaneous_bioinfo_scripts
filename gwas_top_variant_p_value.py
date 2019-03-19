@@ -94,15 +94,19 @@ with ofun(args.gwas, 'rt') as ih:
                 for gg in gs:
                     if p < top_vars[gg]:
                         top_vars[gg] = p
-                        n_vars[gg] += 1
-                        all_vars[gg].append(-math.log(p))
+                    n_vars[gg] += 1
+                    all_vars[gg].append(-math.log(p))
             else:
                 if p < top_vars[g]:
                     top_vars[g] = p
-                    n_vars[g] += 1
-                    all_vars[g].append(-math.log(p))
+                n_vars[g] += 1
+                all_vars[g].append(-math.log(p))
 with open(args.output, 'w') as oh:
     for g in top_vars:
         if g != '.':
-            oh.write(g + '\t' + str(top_vars[g]) + '\t' + str(n_vars[g]) +
-                     '\t' + str(sum(all_vars[g])/n_vars[g]) + '\n')
+            if len(all_vars[g]) > 0:
+                m = sum(all_vars[g])/len(all_vars[g])
+            else:
+                m = 'NaN'
+            oh.write(g + '\t' + str(-math.log(top_vars[g])) + '\t' + str(n_vars[g]) +
+                     '\t' + str(m) + '\n')
