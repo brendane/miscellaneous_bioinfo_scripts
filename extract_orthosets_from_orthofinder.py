@@ -94,50 +94,49 @@ with open(args.orthos, 'r', newline='') as ih:
                 genes_in_ogs[og].update(strains[i] + '_' + g for g in gs.split(', '))
 
 ## Go through duplications file
-oh = sys.stdout
-ogs_in_dups = set()
-oh.write('orthogroup\tsubset\ttaxon\tsingle_copy\tstrains\tgenes\n')
-with open(args.dups, 'r', newline='') as ih:
-    rdr = csv.DictReader(ih, delimiter='\t')
+with open(args.output, 'w') as oh:
+    ogs_in_dups = set()
+    oh.write('orthogroup\tsubset\ttaxon\tsingle_copy\tstrains\tgenes\n')
+    with open(args.dups, 'r', newline='') as ih:
+        rdr = csv.DictReader(ih, delimiter='\t')
 
-    for og, rows in itertools.groupby(rdr, lambda x: x['Orthogroup']):
-        ogs_in_dups.add(og)
-        gene_sets = [genes_in_ogs[og]]     # First item is just the whole orthogroup
-        strain_sets = [strains_in_ogs[og]] # First item is just the whole orthogroup
+        for og, rows in itertools.groupby(rdr, lambda x: x['Orthogroup']):
+            ogs_in_dups.add(og)
+            gene_sets = [genes_in_ogs[og]]     # First item is just the whole orthogroup
+            strain_sets = [strains_in_ogs[og]] # First item is just the whole orthogroup
 
-        ## Get all sets of genes and strains for this orthogroup
-        for row in rows:
-            if float(row['Support']) < args.min_support:
-                continue
-            gs1 = set(row['Genes 1'].split(', '))
-            gs2 = set(row['Genes 2'].split(', '))
-            gene_sets.append(gs1)
-            strain_sets.append({'_'.join(g.split('_')[:2]) for g in gs1})
-            gene_sets.append(gs2)
-            strain_sets.append({'_'.join(g.split('_')[:2]) for g in gs2})
+            ## Get all sets of genes and strains for this orthogroup
+            for row in rows:
+                if float(row['Support']) < args.min_support:
+                    continue
+                gs1 = set(row['Genes 1'].split(', '))
+                gs2 = set(row['Genes 2'].split(', '))
+                gene_sets.append(gs1)
+                strain_sets.append({'_'.join(g.split('_')[:2]) for g in gs1})
+                gene_sets.append(gs2)
+                strain_sets.append({'_'.join(g.split('_')[:2]) for g in gs2})
 
-        ## Identify gene subsets for each taxon
+            ## Identify gene subsets for each taxon
+            for taxon in taxa:
+                strains = taxa[taxon]
+                for sub, g, s in zip(*find_ortholog_sets(strains, strain_sets, gene_sets)):
+                    oh.write(og + '\t' +
+                             og + '.' + str(sub) + '\t' +
+                             taxon + '\t' +
+                             str(int(len(s) == len(g))) + '\t' +
+                             ','.join(s) + '\t' +
+                             ','.join(g) + '\n')
+
+    ## Orthogroups not in duplications file report as they are
+    for og in genes_in_ogs:
+        if og in ogs_in_dups:
+            continue
         for taxon in taxa:
-            strains = taxa[taxon]
-            for sub, g, s in zip(*find_ortholog_sets(strains, strain_sets, gene_sets)):
-                oh.write(og + '\t' +
-                         og + '.' + str(sub) + '\t' +
-                         taxon + '\t' +
-                         str(int(len(s) == len(g))) + '\t' +
-                         ','.join(s) + '\t' +
-                         ','.join(g) + '\n')
-
-
-## Orthogroups not in duplications file report as they are
-for og in genes_in_ogs:
-    if og in ogs_in_dups:
-        continue
-    for taxon in taxa:
-        s = set.intersection(taxa[taxon], strains_in_ogs[og])
-        g = [g for g in genes_in_ogs[og] if '_'.join(g.split('_')[:2]) in taxa[taxon]]
-        oh.write(og + '\t' +
-                 og + '.0\t' +
-                 taxon + '\t' +
-                 str(int(len(s) == len(g))) + '\t' +
-                 ','.join(s) + '\t' +
-                 ','.join(g) + '\n')
+            s = set.intersection(taxa[taxon], strains_in_ogs[og])
+            g = [g for g in genes_in_ogs[og] if '_'.join(g.split('_')[:2]) in taxa[taxon]]
+            oh.write(og + '\t' +
+                     og + '.0\t' +
+                     taxon + '\t' +
+                     str(int(len(s) == len(g))) + '\t' +
+                     ','.join(s) + '\t' +
+                     ','.join(g) + '\n')
