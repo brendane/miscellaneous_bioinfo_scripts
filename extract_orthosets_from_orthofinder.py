@@ -5,12 +5,10 @@
 
     extract_orthosets_from_orthofinder.py --output <output file>
         [--min-support (0.0)]
-        <duplications.csv> <orthogroups.csv> <taxa=focal strain list> ...
+        <duplications.csv> <list of strain suffixes> <taxa=focal strain list> ...
 
     Finds smallest groups of genes that contain all of the focal strains
     present in each orthogroup. Can find more than one set per orthogroup.
-
-    Assumes that strain names have one underscore.
 """
 
 import argparse
@@ -18,7 +16,24 @@ import csv
 import itertools
 import sys
 
-def find_ortholog_sets(strains, strain_sets, gene_sets):
+def genes2strains(genes, strains, suffixes):
+    """ Because this function must work on all strains, not just those
+    included in the analysis, it can return no match."""
+    ret = []
+    for gene in genes:
+        found = False
+        for suff in suffixes:
+            if suff in gene:
+                attempt = gene.split(suff)[0] + suff
+                if attempt in strains:
+                    found = True
+                    ret.append(attempt)
+                    break
+        if not found:
+            ret.append(None)
+    return ret
+
+def find_ortholog_sets(strains, strain_sets, gene_sets, all_taxa, suffs):
     ## Initial set up
     subs = []
     gene_subs = []
@@ -26,8 +41,8 @@ def find_ortholog_sets(strains, strain_sets, gene_sets):
     genes_accounted_for = set()
     strains_to_include = set.intersection(strains, strain_sets[0])
     genes_to_include = set()
-    for g in gene_sets[0]:
-        if '_'.join(g.split('_')[:2]) in strains:
+    for strain, g in zip(genes2strains(gene_sets[0], all_taxa, suffs), gene_sets[0]):
+        if strain in strains:
             genes_to_include.add(g)
     ## Keep identifying subsets until all the genes are accounted for
     while len(genes_to_include - genes_accounted_for) > 0:
@@ -57,86 +72,77 @@ def find_ortholog_sets(strains, strain_sets, gene_sets):
         strain_subs.append(strains_to_include)
         genes_accounted_for.update(gene_sets[candidate])
         genes_to_include -= genes_accounted_for
-        strains_to_include = {'_'.join(g.split('_')[:2]) for g in genes_to_include}
+        strains_to_include = set(genes2strains(genes_to_include, all_taxa, suffs))
     return subs, gene_subs, strain_subs
 
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--output')
-parser.add_argument('--min-support', type=float, default=0)
+parser.add_argument('--min-support', type=float, default=0.)
 parser.add_argument('dups')
-parser.add_argument('orthos')
+parser.add_argument('suffixes')
 parser.add_argument('strainlists', nargs='+')
 args = parser.parse_args()
 
+suffs = []
+with open(args.suffixes, 'r') as ih:
+    for line in ih:
+        suffs.append(line.strip())
+
 ## List of strains for each taxon
 taxa = {}
+all_taxa = set()
 for sl in args.strainlists:
     taxon, fname = sl.split('=')
     taxa[taxon] = set()
     with open(fname, 'r') as ih:
         for line in ih:
             taxa[taxon].add(line.strip())
+            all_taxa.add(line.strip())
 
-## Genes and strains in each orthogroup
-strains_in_ogs = {}
-genes_in_ogs = {}
-with open(args.orthos, 'r', newline='') as ih:
-    rdr = csv.reader(ih, delimiter='\t')
-    strains = next(rdr)[1:]
-    for row in rdr:
-        og = row[0]
-        strains_in_ogs[og] = set()
-        genes_in_ogs[og] = set()
-        for i, gs in enumerate(row[1:]):
-            if gs != '':
-                strains_in_ogs[og].add(strains[i])
-                genes_in_ogs[og].update(strains[i] + '_' + g for g in gs.split(', '))
 
 ## Go through duplications file
+strains_observed = set()
 with open(args.output, 'w') as oh:
-    ogs_in_dups = set()
-    oh.write('orthogroup\tsubset\ttaxon\tsingle_copy\tstrains\tgenes\n')
+    oh.write('orthogroup\tsubset\ttaxon\tsingle_copy\tn_strains\tcore\tstrains\tgenes\n')
     with open(args.dups, 'r', newline='') as ih:
         rdr = csv.DictReader(ih, delimiter='\t')
 
         for og, rows in itertools.groupby(rdr, lambda x: x['Orthogroup']):
-            ogs_in_dups.add(og)
-            gene_sets = [genes_in_ogs[og]]     # First item is just the whole orthogroup
-            strain_sets = [strains_in_ogs[og]] # First item is just the whole orthogroup
+            gene_sets = []
+            strain_sets = []
 
             ## Get all sets of genes and strains for this orthogroup
+            first = True
             for row in rows:
+                if first:
+                    gene_sets.append(set(row['Genes 1'].split(', ') + row['Genes 2'].split(', ')))
+                    strain_sets.append(set(genes2strains(gene_sets[0], all_taxa, suffs)))
+                    first = False
                 if float(row['Support']) < args.min_support:
                     continue
                 gs1 = set(row['Genes 1'].split(', '))
                 gs2 = set(row['Genes 2'].split(', '))
                 gene_sets.append(gs1)
-                strain_sets.append({'_'.join(g.split('_')[:2]) for g in gs1})
+                strain_sets.append(set(genes2strains(gs1, all_taxa, suffs)))
                 gene_sets.append(gs2)
-                strain_sets.append({'_'.join(g.split('_')[:2]) for g in gs2})
+                strain_sets.append(set(genes2strains(gs2, all_taxa, suffs)))
 
             ## Identify gene subsets for each taxon
             for taxon in taxa:
                 strains = taxa[taxon]
-                for sub, g, s in zip(*find_ortholog_sets(strains, strain_sets, gene_sets)):
+                for sub, g, s in zip(*find_ortholog_sets(strains, strain_sets, gene_sets, all_taxa, suffs)):
+                    strains_observed.update(s)
                     oh.write(og + '\t' +
                              og + '.' + str(sub) + '\t' +
                              taxon + '\t' +
                              str(int(len(s) == len(g))) + '\t' +
+                             str(len(s)) + '\t' +
+                             str(int(len(s) == len(strains))) + '\t' +
                              ','.join(s) + '\t' +
                              ','.join(g) + '\n')
 
-    ## Orthogroups not in duplications file report as they are
-    for og in genes_in_ogs:
-        if og in ogs_in_dups:
-            continue
-        for taxon in taxa:
-            s = set.intersection(taxa[taxon], strains_in_ogs[og])
-            g = [g for g in genes_in_ogs[og] if '_'.join(g.split('_')[:2]) in taxa[taxon]]
-            oh.write(og + '\t' +
-                     og + '.0\t' +
-                     taxon + '\t' +
-                     str(int(len(s) == len(g))) + '\t' +
-                     ','.join(s) + '\t' +
-                     ','.join(g) + '\n')
+print('Strains not found:')
+for taxon, strains in taxa.items():
+    print(taxon + ':')
+    print('\t' + ', '.join(strains - strains_observed))
