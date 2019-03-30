@@ -1,10 +1,11 @@
 #!/usr/bin/env python2.7
 """
     Given a gff file and a fasta file, output a file with protein
-    translations of genes.
+    translations of genes. Alternatively, output the nucleotide seqs
+    with --nuc.
 
     gff2fasta_prot.py [--eliminate-identical] [--id <id field (locus_tag)>]
-        [--table <trans table (Bacterial)>]
+        [--table <trans table (Bacterial)>] [--nuc]
         [--prefix <prefix>] <gff> <fasta>
 
     Uses Bacterial translation table, and checks if the sequences is a
@@ -20,6 +21,8 @@
 
     --eliminate-identical reports only the first of identical 
     protein sequences.
+
+    UPDATE 30 March 2019: added --nuc option.
 """
 
 import argparse
@@ -35,6 +38,7 @@ parser.add_argument('--prefix')
 parser.add_argument('--table', default='Bacterial')
 parser.add_argument('--id', default='locus_tag')
 parser.add_argument('--eliminate-identical')
+parser.add_argument('--nuc', default=False, action='store_true')
 parser.add_argument('gff')
 parser.add_argument('fasta')
 args = parser.parse_args()
@@ -83,10 +87,13 @@ with open(args.gff, 'rb') as ih:
         overhang = 3 - (len(seq) % 3)
         if overhang != 3:
             seq.seq += 'N' * overhang
-        try:
-            p = str(seq.seq.translate(table=table, cds=True))
-        except TranslationError:
-            p = str(seq.seq.translate(table=table))
+        if args.nuc:
+            p = str(seq.seq)
+        else:
+            try:
+                p = str(seq.seq.translate(table=table, cds=True))
+            except TranslationError:
+                p = str(seq.seq.translate(table=table))
         if (not ei) or (p not in prot_seqs):
             sys.stdout.write('>' + prefix + lt + '\n')
             sys.stdout.write(p + '\n')
