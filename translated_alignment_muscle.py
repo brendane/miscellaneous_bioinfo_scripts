@@ -31,28 +31,32 @@ for rec in SeqIO.parse(args.input, 'fasta'):
         p = str(rec.seq.translate(table=args.table))
     prots.append((rec.description, p))
 
-## Align
-muscle = subprocess.Popen(args=['muscle'],
-                          stdin=subprocess.PIPE,
-                          stdout=subprocess.PIPE)
-prot_input = ['>' + rec[0] + '\n' + re.sub('\\*', 'X', rec[1]) + '\n' for rec in prots]
-prot_aln_string = muscle.communicate(bytearray('\n'.join(prot_input)+'\n', 'utf-8'))[0].decode('utf-8')
-if prot_aln_string == '':
-    raise Exception('Empty protein alignment')
-prot_aln = AlignIO.read(StringIO(prot_aln_string), 'fasta') 
+if len(nucs) == 1:
+    for n in nucs.values():
+        sys.stdout.writelines(['>', n.description, '\n', str(n.seq)])
+else:
+    ## Align
+    muscle = subprocess.Popen(args=['muscle'],
+                              stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE)
+    prot_input = ['>' + rec[0] + '\n' + re.sub('\\*', 'X', rec[1]) + '\n' for rec in prots]
+    prot_aln_string = muscle.communicate(bytearray('\n'.join(prot_input)+'\n', 'utf-8'))[0].decode('utf-8')
+    if prot_aln_string == '':
+        raise Exception('Empty protein alignment')
+    prot_aln = AlignIO.read(StringIO(prot_aln_string), 'fasta') 
 
-## Use protein alignment to align nucleotides
-for p in prot_aln:
-    n = nucs[p.description]
-    aln_n = []
-    codon = 0
-    for aa in p:
-        if aa == '-':
-            aln_n.append('---')
-        else:
-            s = codon*3
-            e = codon*3+3
-            if e > len(n): e = len(n)
-            aln_n.append(str(n[s:e].seq))
-            codon += 1
-    sys.stdout.writelines(['>', p.description, '\n', ''.join(aln_n), '\n'])
+    ## Use protein alignment to align nucleotides
+    for p in prot_aln:
+        n = nucs[p.description]
+        aln_n = []
+        codon = 0
+        for aa in p:
+            if aa == '-':
+                aln_n.append('---')
+            else:
+                s = codon*3
+                e = codon*3+3
+                if e > len(n): e = len(n)
+                aln_n.append(str(n[s:e].seq))
+                codon += 1
+        sys.stdout.writelines(['>', p.description, '\n', ''.join(aln_n), '\n'])
