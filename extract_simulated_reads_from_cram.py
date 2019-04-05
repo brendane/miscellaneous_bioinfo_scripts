@@ -64,6 +64,8 @@ for strain, fname in files.items():
     if strain not in n_reads:
         continue
     nr[strain] = 0
+    if n_reads[strain] == 0:
+        continue
     with pysam.AlignmentFile(fname, 'rc') as ih:
         reads_sampled = set()
         # 1. If first, get header and apply to output file
@@ -72,13 +74,13 @@ for strain, fname in files.items():
             first = False
         # 2. Calculate number of reads in file total; divide by two to get pairs
         total_reads = ih.count() / 2
-        prob = total_reads / float(n_reads[strain])
+        prob = float(n_reads[strain]) / total_reads
+        print('Reads to sample from %s: %f of %i total reads' % (strain, prob, total_reads))
         # 3. Randomly sample with appropriate probability
         for read in ih.fetch():
             if read.qname in reads_sampled:
                 # Write this read -- already sampled mate
                 oh.write(read)
-                pass
             elif rand.uniform(0, 1) < prob:
                 # Passes probability filter
                 reads_sampled.add(read.qname)
