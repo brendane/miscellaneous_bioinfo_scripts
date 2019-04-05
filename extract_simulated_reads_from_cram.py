@@ -17,6 +17,7 @@ import math
 import random
 
 from Bio import SeqIO
+import pysam
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--output')
@@ -31,7 +32,7 @@ args = parser.parse_args()
 ## strain, file
 print('reading file locations')
 files = {}
-with open(args.reads, 'rb') as ih:
+with open(args.aligns, 'r') as ih:
     for line in ih:
         fields = line.strip().split('\t')
         files[fields[0]] = fields[1]
@@ -40,7 +41,7 @@ with open(args.reads, 'rb') as ih:
 ## with columns: strain, frequency.
 print('reading frequencies file')
 freqs = {}
-with open(args.freqs, 'rb') as ih:
+with open(args.freqs, 'r') as ih:
     for line in ih:
         fields = line.strip().split('\t')
         freqs[fields[0]] = float(fields[1])
@@ -55,19 +56,20 @@ for strain, freq in freqs.items():
 
 ## Get the reads
 print('sampling reads')
-first = False
+first = True
 rand = random.Random()
 oh = None
 nr = {}
-for strain, file_info in files.items():
+for strain, fname in files.items():
     if strain not in n_reads:
         continue
     nr[strain] = 0
-    with pysam.AlignmentFile(file_info[strain], 'rc') as ih:
+    with pysam.AlignmentFile(fname, 'rc') as ih:
         reads_sampled = set()
         # 1. If first, get header and apply to output file
         if first:
             oh = pysam.AlignmentFile(args.output + '.cram', 'wc', template=ih)
+            first = False
         # 2. Calculate number of reads in file total; divide by two to get pairs
         total_reads = ih.count() / 2
         prob = total_reads / float(n_reads[strain])
@@ -84,6 +86,6 @@ for strain, file_info in files.items():
                 nr[strain] += 1
 oh.close()
 
-with open(args.output + '.nreads.txt', 'wb') as nr:
+with open(args.output + '.nreads.txt', 'w') as nr:
     for strain, n in nr.items():
         nr.writelines([strain, '\t', n, '\n'])
