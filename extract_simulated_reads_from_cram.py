@@ -88,6 +88,6 @@ for strain, fname in files.items():
                 nr[strain] += 1
 oh.close()
 
-with open(args.output + '.nreads.txt', 'w') as nr:
+with open(args.output + '.nreads.txt', 'w') as oh:
     for strain, n in nr.items():
-        nr.writelines([strain, '\t', n, '\n'])
+        oh.writelines([strain, '\t', str(n), '\n'])
