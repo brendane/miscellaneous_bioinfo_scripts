@@ -104,7 +104,7 @@ for sl in args.strainlists:
 ## Go through duplications file
 strains_observed = set()
 with open(args.output, 'w') as oh:
-    oh.write('orthogroup\tsubset\ttaxon\tsingle_copy\tn_strains\tcore\tstrains\tgenes\n')
+    oh.write('orthogroup\tsubset\tsubset_path\ttaxon\tsingle_copy\tn_strains\tcore\tstrains\tgenes\n')
     with open(args.dups, 'r', newline='') as ih:
         rdr = csv.DictReader(ih, delimiter='\t')
 
@@ -128,6 +128,17 @@ with open(args.output, 'w') as oh:
                 gene_sets.append(gs2)
                 strain_sets.append(set(genes2strains(gs2, all_taxa, suffs)))
 
+            gene_sets_path = []
+            for i, gs1 in enumerate(gene_sets):
+                n = ''
+                for j, gs2 in enumerate(gene_sets):
+                    if j == i:
+                        continue
+                    if gs1.issubset(gs2):
+                        n += '-' + str(j)
+                n += '-' + str(i)
+                gene_sets_path.append(n[1:])
+
             ## Identify gene subsets for each taxon
             for taxon in taxa:
                 strains = taxa[taxon]
@@ -135,6 +146,7 @@ with open(args.output, 'w') as oh:
                     strains_observed.update(s)
                     oh.write(og + '\t' +
                              og + '.' + str(sub) + '\t' +
+                             gene_sets_path[sub] + '\t' +
                              taxon + '\t' +
                              str(int(len(s) == len(g))) + '\t' +
                              str(len(s)) + '\t' +
