@@ -25,6 +25,7 @@ import re
 import sys
 
 parser = argparse.ArgumentParser(usage=__doc__)
+parser.add_argument('--grp5', default=False, action='store_true')
 parser.add_argument('assoc')
 parser.add_argument('closest')
 args = parser.parse_args()
@@ -37,7 +38,10 @@ else:
 with op(args.closest, 'rt') as ih:
     rdr = csv.reader(ih, delimiter='\t')
     for row in rdr:
-        grp = row[3]
+        if args.grp5:
+            grp = row[4]
+        else:
+            grp = row[3]
         if row[-1] == '' or row[-1] == '.':
             continue
         if row[-1].startswith('ID=cluster_'):
