@@ -9,6 +9,13 @@
 
     Finds smallest groups of genes that contain all of the focal strains
     present in each orthogroup. Can find more than one set per orthogroup.
+
+    TODO (FIXME):
+    Once a set is accepted as an orthoset, its partner (the other branch
+    at that node) must also be an orthoset or several orthosets. Also,
+    all nodes above the orthoset node in the tree should be treated as
+    orthoset. Probably need the reconciled tree from OrthoFinder to do
+    this.
 """
 
 import argparse
@@ -16,19 +23,25 @@ import csv
 import itertools
 import sys
 
-def genes2strains(genes, strains, suffixes):
+def genes2strains(genes, strains, suffixes, dash):
     """ Because this function must work on all strains, not just those
     included in the analysis, it can return no match."""
     ret = []
     for gene in genes:
         found = False
-        for suff in suffixes:
-            if suff in gene:
-                attempt = gene.split(suff)[0] + suff
-                if attempt in strains:
-                    found = True
-                    ret.append(attempt)
-                    break
+        if len(suffixes) > 0:
+            for suff in suffixes:
+                if suff in gene:
+                    attempt = gene.split(suff)[0] + suff
+                    if attempt in strains:
+                        found = True
+                        ret.append(attempt)
+                        break
+        elif dash:
+            attempt = gene.split('_', 1)[0]
+            if attempt in strains:
+                found = True
+                ret.append(attempt)
         if not found:
             ret.append(None)
     return ret
@@ -41,7 +54,7 @@ def find_ortholog_sets(strains, strain_sets, gene_sets, all_taxa, suffs):
     genes_accounted_for = set()
     strains_to_include = set.intersection(strains, strain_sets[0])
     genes_to_include = set()
-    for strain, g in zip(genes2strains(gene_sets[0], all_taxa, suffs), gene_sets[0]):
+    for strain, g in zip(genes2strains(gene_sets[0], all_taxa, suffs, args.dash), gene_sets[0]):
         if strain in strains:
             genes_to_include.add(g)
     ## Keep identifying subsets until all the genes are accounted for
@@ -72,22 +85,24 @@ def find_ortholog_sets(strains, strain_sets, gene_sets, all_taxa, suffs):
         strain_subs.append(strains_to_include)
         genes_accounted_for.update(gene_sets[candidate])
         genes_to_include -= genes_accounted_for
-        strains_to_include = set(genes2strains(genes_to_include, all_taxa, suffs))
+        strains_to_include = set(genes2strains(genes_to_include, all_taxa, suffs, args.dash))
     return subs, gene_subs, strain_subs
 
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--output')
 parser.add_argument('--min-support', type=float, default=0.)
+parser.add_argument('--dash', default=False, action='store_true')
 parser.add_argument('dups')
 parser.add_argument('suffixes')
 parser.add_argument('strainlists', nargs='+')
 args = parser.parse_args()
 
 suffs = []
-with open(args.suffixes, 'r') as ih:
-    for line in ih:
-        suffs.append(line.strip())
+if not args.dash:
+    with open(args.suffixes, 'r') as ih:
+        for line in ih:
+            suffs.append(line.strip())
 
 ## List of strains for each taxon
 taxa = {}
@@ -117,16 +132,16 @@ with open(args.output, 'w') as oh:
             for row in rows:
                 if first:
                     gene_sets.append(set(row['Genes 1'].split(', ') + row['Genes 2'].split(', ')))
-                    strain_sets.append(set(genes2strains(gene_sets[0], all_taxa, suffs)))
+                    strain_sets.append(set(genes2strains(gene_sets[0], all_taxa, suffs, args.dash)))
                     first = False
                 if float(row['Support']) < args.min_support:
                     continue
                 gs1 = set(row['Genes 1'].split(', '))
                 gs2 = set(row['Genes 2'].split(', '))
                 gene_sets.append(gs1)
-                strain_sets.append(set(genes2strains(gs1, all_taxa, suffs)))
+                strain_sets.append(set(genes2strains(gs1, all_taxa, suffs, args.dash)))
                 gene_sets.append(gs2)
-                strain_sets.append(set(genes2strains(gs2, all_taxa, suffs)))
+                strain_sets.append(set(genes2strains(gs2, all_taxa, suffs, args.dash)))
 
             gene_sets_path = []
             for i, gs1 in enumerate(gene_sets):
