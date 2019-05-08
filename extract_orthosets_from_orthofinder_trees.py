@@ -142,7 +142,7 @@ with open(args.output, 'wt') as oh:
         if OG in OGs_done:
             continue
         strains_in_set = {g.split('_', 1)[0] for g in genes}
-        if len(strains in set) == 0:
+        if len(strains_in_set) == 0:
             continue
         oh.writelines([OG, '\t', OG + '.' + str(i), '\t',
                        str(int(len(genes) == len(strains_in_set))), '\t',
