@@ -6,8 +6,72 @@
     combine_orthotable_and_annotations.py <orthotable> <annotation>
 """
 
+import collections
 import csv
+import math
+import os
+import re
+import subprocess
 import sys
+import tempfile
+
+def code_for_mafft(d):
+    return re.sub('[=<>]', ' ', re.sub('-', '##', re.sub(' ', '@@', d)))
+
+def decode_from_mafft(d):
+    return re.sub('##', '-', re.sub('-', ' ', re.sub('@', ' ', d)))
+
+def process_mafft_output(barray):
+    lines = decode_from_mafft(barray.decode()).split('\n')
+    ret = []
+    k = -1
+    for line in lines:
+        if line.startswith('>'):
+            if k >= 0:
+                ret[k] = decode_from_mafft(ret[k])
+            k += 1
+            ret.append('')
+        else:
+            ret[k] += line
+    return ret
+
+def get_consensus_description(descriptions, tempin):
+    if len(descriptions) > 200:
+        ## Reduce to just the top 3, in rough proportion to
+        ## their commonality
+        dd = collections.Counter(descriptions)
+        descriptions = []
+        for i, mc in enumerate(dd.most_common()):
+            if i > 3:
+                break
+            for j in range(math.ceil(mc[1] / 10)):
+                descriptions.append(mc[0])
+    with open(tempin, 'wt') as oh:
+        for i, d in enumerate(descriptions):
+            oh.write('>' + str(i) + '\n' + code_for_mafft(d) + '\n')
+    p = subprocess.Popen(['mafft', '--text', tempin], stdout=subprocess.PIPE)
+    if p.wait() != 0:
+        raise Exception('MAFFT alignment failed')
+    aln = process_mafft_output(p.communicate()[0])
+    consensus = ''
+    for i in range(max(map(len, aln))):
+        count = collections.Counter()
+        for j in range(len(aln)):
+            try:
+                count.update(aln[j][i])
+            except IndexError:
+                count.update(' ')
+        mc = count.most_common()[0] 
+        if mc[1] / float(len(aln)) >= 0.5:
+            consensus += mc[0]
+        else:
+            consensus += ''
+    return re.sub(' {2,}', ' ', consensus.strip())
+
+
+refs = []
+if len(sys.argv) > 3:
+    refs = sys.argv[3].split(',')
 
 annot = {}
 with open(sys.argv[2], 'rt') as ih:
@@ -15,16 +79,33 @@ with open(sys.argv[2], 'rt') as ih:
     for row in rdr:
         annot[row[0]] = (row[1], row[2])
 
+sys.stdout.write('orthogroup\tsubset\tgene\tdescription')
+for ref in refs:
+    sys.stdout.write('\t' + ref)
+sys.stdout.write('\tdescriptions\n')
 with open(sys.argv[1], 'rt') as ih:
     rdr = csv.DictReader(ih, delimiter='\t')
+    tin = tempfile.mkstemp(dir='.')[1]
     for row in rdr:
         genes = row['genes'].split(',')
         names = set()
         descriptions = []
+        ref_genes = collections.defaultdict(list)
         for gene in genes:
             a = annot[gene]
             names.add(a[0])
             descriptions.append(a[1])
-        consensus_description = ???
-        sys.stdout.writelines([row['subset'], '\t', ','.join(names), '\t',
-                               consensus_description, '\n'])
+            for ref in refs:
+                if gene.startswith(ref + '_'):
+                    ref_genes[ref].append(gene)
+        if len(descriptions) > 1:
+            consensus_description = get_consensus_description(descriptions, tin)
+        else:
+            consensus_description = descriptions[0]
+        sys.stdout.writelines([row['orthogroup'], '\t', row['subset'], '\t',
+                               ','.join(n for n in names if n != '' and n != ' '),
+                               '\t', consensus_description])
+        for ref in refs:
+            sys.stdout.write('\t' + ','.join(ref_genes[ref]))
+        sys.stdout.write('\t' + '; '.join(set(descriptions)) + '\n')
+    os.unlink(tin)
