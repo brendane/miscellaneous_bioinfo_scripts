@@ -21,6 +21,7 @@ def combine_tags(ts0, ts1):
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('gff')
+parser.add_argument('prefix')
 args = parser.parse_args()
 
 all_tags = {}
@@ -54,5 +55,5 @@ for tags in all_tags.values():
         partial = True
     if tags['pseudo'] == 'true':
         pseudo = True
-    sys.stdout.writelines([lt, '\t', gene, '\t', product, '\t',
+    sys.stdout.writelines([args.prefix + lt, '\t', gene, '\t', product, '\t',
                            str(int(partial)), '\t', str(int(pseudo)), '\n'])
