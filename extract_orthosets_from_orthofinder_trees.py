@@ -126,13 +126,22 @@ with open(args.output, 'wt') as oh:
                 i = node_nums[nn]
                 if i in remove:
                     continue
-                strains_in_set = {g.split('_', 1)[0] for g in genes}
+                gg = []
+                strains_in_set = set()
+                for g in genes:
+                    s = g.split('_', 1)[0]
+                    if s in focal_strains:
+                        strains_in_set.add(s)
+                        gg.append(g)
+                if len(strains_in_set) == 0:
+                    continue
+
                 oh.writelines([OG, '\t', OG + '.' + str(i), '\t',
-                               str(int(len(genes) == len(strains_in_set))), '\t',
+                               str(int(len(gg) == len(strains_in_set))), '\t',
                                str(len(strains_in_set)), '\t',
                                str(int(len(strains_in_set) == len(focal_strains))), '\t',
                                ','.join(sorted(strains_in_set)), '\t',
-                               ','.join(sorted(genes)), '\n'])
+                               ','.join(sorted(gg)), '\n'])
             OGs_done.add(OG)
 
     ## Write information for remaining orthogroups -- should be the
@@ -141,12 +150,18 @@ with open(args.output, 'wt') as oh:
         i = 0
         if OG in OGs_done:
             continue
-        strains_in_set = {g.split('_', 1)[0] for g in genes}
+        gg = []
+        strains_in_set = set()
+        for g in genes:
+            s = g.split('_', 1)[0]
+            if s in focal_strains:
+                strains_in_set.add(s)
+                gg.append(g)
         if len(strains_in_set) == 0:
             continue
         oh.writelines([OG, '\t', OG + '.' + str(i), '\t',
-                       str(int(len(genes) == len(strains_in_set))), '\t',
+                       str(int(len(gg) == len(strains_in_set))), '\t',
                        str(len(strains_in_set)), '\t',
                        str(int(len(strains_in_set) == len(focal_strains))), '\t',
                        ','.join(sorted(strains_in_set)), '\t',
-                       ','.join(sorted(genes)), '\n'])
+                       ','.join(sorted(gg)), '\n'])
