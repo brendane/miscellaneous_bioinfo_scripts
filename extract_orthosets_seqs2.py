@@ -3,20 +3,32 @@
     Given the output of extract_orthosets_from_orthofinder_trees.py,
     extract unaligned files of sequences.
 
-    extract_orthosets_seqs.py [--gene-list] <orthosets> <fasta> <output directory>
+    extract_orthosets_seqs.py [--gene-list] [--orthogroups]
+        <orthosets> <fasta> <output directory>
+
+    --gene-list     Text file, one entry per line, listing orthosets or
+                    orthogroups to include (default = use all).
+    --orthogroups   Collect sequences for orthogroups rather than subsets
+                    (default = use orthosets).
 """
  
 import argparse
 import csv
+import itertools
 
 from Bio import SeqIO
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--gene-lists')
+parser.add_argument('--orthogroups', default=False, action='store_true')
 parser.add_argument('orthosets')
 parser.add_argument('fasta')
 parser.add_argument('output')
 args = parser.parse_args()
+
+key = 'subset'
+if args.orthogroups:
+    key = 'orthogroup'
 
 seqs = SeqIO.index(args.fasta, 'fasta')
 
@@ -28,12 +40,17 @@ if args.gene_lists is not None:
 
 with open(args.orthosets) as ih:
     rdr = csv.DictReader(ih, delimiter='\t')
-    for row in rdr:
-        if len(keep) > 0 and row['subset'] not in keep:
+    for o, rows in itertools.groupby(rdr, lambda x: x[key]):
+        seqs_written = set()
+        if len(keep) > 0 and o not in keep:
             continue
-        with open(args.output + '/' + row['subset'] + '.fasta', 'w') as oh:
-            for g in row['genes'].split(','):
-                try:
-                    SeqIO.write(seqs[g], oh, 'fasta')
-                except KeyError:
-                    raise Exception('%s not found in %s' % (g, args.fasta))
+        with open(args.output + '/' + o + '.fasta', 'w') as oh:
+            for row in rows:
+                for g in row['genes'].split(','):
+                    if g in seqs_written:
+                        raise Exception('%s found twice in %s' % (g, o))
+                    try:
+                        SeqIO.write(seqs[g], oh, 'fasta')
+                        seqs_written.add(g)
+                    except KeyError:
+                        raise Exception('%s not found in %s' % (g, args.fasta))
