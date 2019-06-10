@@ -3,7 +3,9 @@
     Align protein coding nucleotide sequences based on the alignments of
     their translations.
 
-    translated_alignment_muscle.py <fasta input>
+    translated_alignment_muscle.py [--table translation table (Bacterial)]
+        [--protein-aln <protein alignment file>]
+        <fasta input>
 """
 
 import argparse
@@ -16,6 +18,7 @@ from Bio import AlignIO, SeqIO
 from Bio.Data.CodonTable import TranslationError
 
 parser = argparse.ArgumentParser(usage=__doc__)
+parser.add_argument('--protein-aln')
 parser.add_argument('--table', default='Bacterial')
 parser.add_argument('input')
 args = parser.parse_args()
@@ -39,15 +42,17 @@ if len(nucs) == 1:
         sys.stdout.writelines(['>', n.description, '\n', str(n.seq)])
 else:
     ## Align
-    muscle = subprocess.Popen(args=['muscle'],
-                              stdin=subprocess.PIPE,
-                              stdout=subprocess.PIPE)
-    prot_input = ['>' + rec[0] + '\n' + re.sub('\\*', 'X', rec[1]) + '\n' for rec in prots]
-    prot_aln_string = muscle.communicate(bytearray('\n'.join(prot_input)+'\n', 'utf-8'))[0].decode('utf-8')
-    if prot_aln_string == '':
-        raise Exception('Empty protein alignment')
-    ## TODO: Can skip to this step if there is already an alignment
-    prot_aln = AlignIO.read(StringIO(prot_aln_string), 'fasta') 
+    if args.protein_aln is None:
+        muscle = subprocess.Popen(args=['muscle'],
+                                  stdin=subprocess.PIPE,
+                                  stdout=subprocess.PIPE)
+        prot_input = ['>' + rec[0] + '\n' + re.sub('\\*', 'X', rec[1]) + '\n' for rec in prots]
+        prot_aln_string = muscle.communicate(bytearray('\n'.join(prot_input)+'\n', 'utf-8'))[0].decode('utf-8')
+        if prot_aln_string == '':
+            raise Exception('Empty protein alignment')
+        prot_aln = AlignIO.read(StringIO(prot_aln_string), 'fasta') 
+    else:
+        prot_aln = AlignIO.read(args.protein_aln, 'fasta') 
 
     ## Use protein alignment to align nucleotides
     for p in prot_aln:

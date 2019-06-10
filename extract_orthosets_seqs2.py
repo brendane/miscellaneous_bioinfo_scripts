@@ -3,23 +3,26 @@
     Given the output of extract_orthosets_from_orthofinder_trees.py,
     extract unaligned files of sequences.
 
-    extract_orthosets_seqs.py [--gene-list] [--orthogroups]
+    extract_orthosets_seqs.py [--ignore-missing] [--gene-list] [--orthogroups]
         <orthosets> <fasta> <output directory>
 
-    --gene-list     Text file, one entry per line, listing orthosets or
-                    orthogroups to include (default = use all).
-    --orthogroups   Collect sequences for orthogroups rather than subsets
-                    (default = use orthosets).
+    --ignore-missing Skip missing sequences rather than raising an exception.
+    --gene-list      Text file, one entry per line, listing orthosets or
+                     orthogroups to include (default = use all).
+    --orthogroups    Collect sequences for orthogroups rather than subsets
+                     (default = use orthosets).
 """
  
 import argparse
 import csv
 import itertools
+import sys
 
 from Bio import SeqIO
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--gene-lists')
+parser.add_argument('--ignore-missing', default=False, action='store_true')
 parser.add_argument('--orthogroups', default=False, action='store_true')
 parser.add_argument('--subsubsets', default=False, action='store_true')
 parser.add_argument('orthosets')
@@ -56,4 +59,8 @@ with open(args.orthosets) as ih:
                         SeqIO.write(seqs[g], oh, 'fasta')
                         seqs_written.add(g)
                     except KeyError:
-                        raise Exception('%s not found in %s' % (g, args.fasta))
+                        if args.ignore_missing:
+                            sys.stderr.write('WARNING: %s not found in %s' % (g, args.fasta))
+                            continue
+                        else:
+                            raise Exception('%s not found in %s' % (g, args.fasta))
