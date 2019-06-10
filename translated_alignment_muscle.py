@@ -24,6 +24,9 @@ nucs = {}
 prots = []
 for rec in SeqIO.parse(args.input, 'fasta'):
     ## Read input file and translate
+    if len(rec) % 3 != 0:
+        ## Pseudogenes and fragments
+        rec.seq += 'N' * (3 - len(rec) % 3)
     nucs[rec.description] = rec
     try:
         p = str(rec.seq.translate(table=args.table, cds=True))
@@ -43,6 +46,7 @@ else:
     prot_aln_string = muscle.communicate(bytearray('\n'.join(prot_input)+'\n', 'utf-8'))[0].decode('utf-8')
     if prot_aln_string == '':
         raise Exception('Empty protein alignment')
+    ## TODO: Can skip to this step if there is already an alignment
     prot_aln = AlignIO.read(StringIO(prot_aln_string), 'fasta') 
 
     ## Use protein alignment to align nucleotides

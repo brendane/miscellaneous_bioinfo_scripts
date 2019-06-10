@@ -21,6 +21,7 @@ from Bio import SeqIO
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--gene-lists')
 parser.add_argument('--orthogroups', default=False, action='store_true')
+parser.add_argument('--subsubsets', default=False, action='store_true')
 parser.add_argument('orthosets')
 parser.add_argument('fasta')
 parser.add_argument('output')
@@ -29,6 +30,8 @@ args = parser.parse_args()
 key = 'subset'
 if args.orthogroups:
     key = 'orthogroup'
+elif args.subsubsets:
+    key = 'subsubset'
 
 seqs = SeqIO.index(args.fasta, 'fasta')
 
