@@ -32,11 +32,13 @@ with open(sys.argv[1], 'rt') as ih:
         for bl, bq, br in zip(block_lens, block_qs, block_rs):
             i = br
             j = bq
+            if strand == '-':
+                j = bq + bl -1
             for k in range(bl):
                 if (r, i) in ref_pos_done or (q, j) in qry_pos_done:
                     multi.add((r, i)); multi.add((r, j))
                     continue
-                matches.add((r, i, q, j))
+                matches.add((r, i, q, j, strand))
                 ref_pos_done.add((r, i))
                 qry_pos_done.add((q, j))
                 #sys.stdout.write(q + '\t' + str(j+1) + '\t' + r + '\t' + str(i) + '\n')
@@ -46,7 +48,7 @@ with open(sys.argv[1], 'rt') as ih:
                 else:
                     j -= 1
 
-for r, i, q, j in matches:
+for r, i, q, j, s in matches:
     if (r, i) in multi or (q, j) in multi:
         continue
-    sys.stdout.write(q + '\t' + str(j+1) + '\t' + r + '\t' + str(i+1) + '\n')
+    sys.stdout.write(q + '\t' + str(j+1) + '\t' + r + '\t' + str(i+1) + '\t' + s + '\n')
