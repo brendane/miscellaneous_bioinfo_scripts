@@ -3,6 +3,8 @@
 import csv
 import sys
 
+raise Exception('BLAT parsing script has bugs. Do not use.')
+
 ref_pos_done = set()
 qry_pos_done = set()
 multi = set()
@@ -22,26 +24,23 @@ with open(sys.argv[1], 'rt') as ih:
         block_lens = [int(x) for x in row[18].split(',')[:-1]]
         block_qs = [int(x) for x in row[19].split(',')[:-1]]
         block_rs = [int(x) for x in row[20].split(',')[:-1]]
-        #for bl, bq, br in zip(block_lens, block_qs, block_rs):
-        #    if strand == '+':
-        #        sys.stdout.write(q + '\t' + str(bq) + '\t' + str(bq + bl) + '\t' +
-        #                         r + '\t' + str(br) + '\t' + str(br + bl) + '\n')
-        #    else:
-        #        sys.stdout.write(q + '\t' + str(bq + bl) + '\t' + str(bq) + '\t' +
-        #                         r + '\t' + str(br) + '\t' + str(br + bl) + '\n')
         for bl, bq, br in zip(block_lens, block_qs, block_rs):
-            i = br
-            j = bq
+            i = br + rs
+            j = bq + qs
             if strand == '-':
-                j = bq + bl -1
+                j = bq + bl - 1
             for k in range(bl):
                 if (r, i) in ref_pos_done or (q, j) in qry_pos_done:
                     multi.add((r, i)); multi.add((r, j))
+                    i += 1
+                    if strand == '+':
+                        j += 1
+                    else:
+                        j -= 1
                     continue
                 matches.add((r, i, q, j, strand))
                 ref_pos_done.add((r, i))
                 qry_pos_done.add((q, j))
-                #sys.stdout.write(q + '\t' + str(j+1) + '\t' + r + '\t' + str(i) + '\n')
                 i += 1
                 if strand == '+':
                     j += 1

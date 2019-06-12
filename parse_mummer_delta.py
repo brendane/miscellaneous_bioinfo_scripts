@@ -38,7 +38,6 @@ alignments = []
 with open(sys.argv[1], 'rt') as delta_handle:
     seq_files = delta_handle.readline().strip().split()
     data_type = delta_handle.readline().strip()
-    newblock = False
     indels = []
     while True:
         try:
@@ -53,13 +52,13 @@ with open(sys.argv[1], 'rt') as delta_handle:
                                                  refend, qrystart, qryend))
             ref, qry = line.split()[:2]; ref = ref[1:]
             reflen, qrylen = (int(x) for x in line.split()[2:])
-            newblock = True
             indels = []
-        elif newblock:
-            refstart, refend, qrystart, qryend, err, simerr, stops = (int(x) for x in line.split())
-            newblock = False
         else:
-            indels.append(int(line))
+            data = line.strip().split()
+            if len(data) > 1:
+                refstart, refend, qrystart, qryend, err, simerr, stops = (int(x) for x in line.split())
+            else:
+                indels.append(int(line))
     alignments.append(process_indels(indels, ref, qry, refstart,
                                      refend, qrystart, qryend))
 
