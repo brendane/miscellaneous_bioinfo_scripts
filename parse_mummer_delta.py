@@ -1,64 +1,74 @@
 #!/usr/bin/env python3
-## TODO:
-## Not done -- needs revision and testing
+"""
+    Parse the MUMmer delta file format into a tab-delimited file with
+    matching positions.
 
+    parse_mummer_delta.py [--show-gaps] <delta file>
+
+    --show-gaps     List gaps, using 0 as the position number
+"""
+
+import argparse
 import sys
 
-def process_indels(indels, r, q, rs, re, qs, qe):
-    rp = rs - 1
-    qp = qs - 1
-    qdir = 1
-    if qs > qe:
-        qdir = -1
-        qp = qs
-    rdir = 1
-    if rs > re:
-        rdir = -1
-        rp = rs
-    blocks = []
-    for i in indels:
-        old_rp = rp
-        old_qp = qp
-        if i < 0:
-            rp += (-i - 1) * rdir
-            qp += -i * qdir
-        elif i > 0:
-            rp += i * rdir
-            qp += (i - 1) * qdir
-        else:
-            rp = re
-            if rdir == -1: rp = re -1
-            qp = qe
-            if qdir == -1: qp = qe - 1
-        blocks.append((r, old_rp, rp, q, old_qp, qp))
-    import pdb; pdb.set_trace()
-    return blocks
+parser = argparse.ArgumentParser(usage=__doc__)
+parser.add_argument('--show-gaps', default=False, action='store_true')
+parser.add_argument('delta')
+args = parser.parse_args()
 
-alignments = []
-with open(sys.argv[1], 'rt') as delta_handle:
-    seq_files = delta_handle.readline().strip().split()
-    data_type = delta_handle.readline().strip()
-    indels = []
-    while True:
-        try:
-            line = delta_handle.readline().strip()
-            if line == '':
-                break
-        except EOFError:
-            break
+with open(args.delta, 'rt') as ih:
+    f1, f2 = ih.readline().strip().split()
+    ih.readline()
+    for line in ih:
         if line.startswith('>'):
-            if len(indels):
-                alignments.append(process_indels(indels, ref, qry, refstart,
-                                                 refend, qrystart, qryend))
-            ref, qry = line.split()[:2]; ref = ref[1:]
-            reflen, qrylen = (int(x) for x in line.split()[2:])
-            indels = []
+            fields = line.strip()[1:].split()
+            ref_contig = fields[0]
+            qry_contig = fields[1]
+            ref_contig_len = int(fields[2])
+            qry_contig_len = int(fields[3])
         else:
-            data = line.strip().split()
-            if len(data) > 1:
-                refstart, refend, qrystart, qryend, err, simerr, stops = (int(x) for x in line.split())
+            fields = line.strip().split()
+            if len(fields) == 1:
+                dist_to_indel = int(fields[0])
+                for i in range(abs(dist_to_indel)-1):
+                    sys.stdout.write(qry_contig + '\t' + str(qry_move+qry_start) + '\t' +
+                                     ref_contig + '\t' + str(ref_move+ref_start) + '\t' +
+                                     strand + '\n')
+                    ref_move += ref_dir
+                    qry_move += qry_dir
+                if dist_to_indel > 0:
+                    if args.show_gaps:
+                        sys.stdout.write(qry_contig + '\t' + '0' + '\t' +
+                                         ref_contig + '\t' + str(ref_move+ref_start) + '\t' +
+                                         strand + '\n')
+                    ref_move += ref_dir
+                elif dist_to_indel < 0:
+                    if args.show_gaps:
+                        sys.stdout.write(qry_contig + '\t' + str(qry_move+qry_start) + '\t' +
+                                         ref_contig + '\t' + '0' + '\t' +
+                                         strand + '\n')
+                    qry_move += qry_dir
+                else:
+                    for i in range(abs(ref_end - (ref_move*ref_dir+ref_start))+1):
+                        sys.stdout.write(qry_contig + '\t' + str(qry_move+qry_start) + '\t' +
+                                         ref_contig + '\t' + str(ref_move+ref_start) + '\t' +
+                                         strand + '\n')
+                        ref_move += ref_dir
+                        qry_move += qry_dir
             else:
-                indels.append(int(line))
-    alignments.append(process_indels(indels, ref, qry, refstart,
-                                     refend, qrystart, qryend))
-
+                ref_start, ref_end, qry_start, qry_end, _, _, _ = \
+                        (int(x) for x in line.split())
+                ref_strand = 1; ref_dir = 1; qry_strand = 1; qry_dir = 1
+                ref_move = 0; qry_move = 0
+                if ref_start > ref_end:
+                    ref_strand = -1
+                    ref_dir = -1
+                    #ref_move = -1
+                if qry_start > qry_end:
+                    qry_strand = -1
+                    qry_dir = -1
+                    #qry_move = -1
+                if qry_strand == ref_strand:
+                    strand = '+'
+                else:
+                    strand = '-'

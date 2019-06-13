@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-    Using the tsv output from parse_blat_psl_to_pairwise_coords.py,
+    Using the tsv output from parse_mummer_delta.py,
     combine orthologous sites (only 1-1 sites should be in the 
     input).
 
-    align_vcfs_from_blat.py --output <output vcf> 
+    align_vcfs_from_genome_alignment.py --output <output vcf> 
         <alignment file> <reference genome 2> <vcf1> <vcf2>
 
     Note that this can only handle simple SNPs. Remove indels and MNPs
@@ -12,7 +12,7 @@
 
     vcf1 should be called against the genome given as the reference to
     blat (listed first in command), which will be in the 3rd and 4th
-    columns.
+    columns. vcf1 should also be sorted by position and chromosome.
 
     Requires the pysam and Biopython modules.
 """
@@ -62,9 +62,9 @@ for s in samples2:
 vf_out.close()
 
 ## Loop over VCF1 and write matching records
+old_pos1 = ('.', 0)
 with open(args.output, 'a') as oh:
     for rec in vf1:
-        print('Found record')
         ## Skip MNPs and indels
         if max(map(len, rec.alleles)) > 1:
             continue
@@ -76,6 +76,29 @@ with open(args.output, 'a') as oh:
         except KeyError:
             continue
         pos2 = (c2, p2)
+
+        ## TODO -- Check for positions between this one and the last
+        ## position in the VCF file. If there are fixed differences
+        ## between the references, these should be added.
+        ## Problem: We don't know whether these are covered or genotyped
+        ## in either species if they aren't in the VCF. Need a VCF with
+        ## all positions, or a different approach.
+        #if old_pos1[0] != '.' and old_pos1[0] != pos1[0]:
+        #    ## Check to end of previous chromosome
+        #    pass
+        #elif old_pos1[1] != pos1[1]:
+        #    ## From previous position to here
+        #    for p in range(old_pos1[1]+1, pos1[1]):
+        #        pos1_ = (rec.chrom, p)
+        #        try:
+        #            cc2, pp2, st = aln[pos1] 
+        #        except KeyError:
+        #            continue
+        #        pos2_ = (cc2, pp2)
+
+        ## Another problem: This script does not deal with variant sites
+        ## in vcf2 unless they have a match in vcf1.
+
 
         ## Get alleles and genotypes
         genotypes = []
@@ -109,4 +132,3 @@ with open(args.output, 'a') as oh:
                '.', '.', '.', 'GT',
                '\t'.join(str(allele_idx.index(gt)) if gt != 'N' else '.' for gt in genotypes)]
         oh.write('\t'.join(out) + '\n')
-        print('Wrote a record')
