@@ -4,8 +4,12 @@
     information, provide a summary of gene names and descriptions.
 
     combine_orthotable_and_annotations.py <orthotable> <annotation>
+
+    --orthogroups3: Input is Orthogroups.tsv from OrthoFinder v2.3 (or higher)
+        instead of an orthoset table.
 """
 
+import argparse
 import collections
 import csv
 import math
@@ -68,13 +72,20 @@ def get_consensus_description(descriptions, tempin):
             consensus += ''
     return re.sub(' {2,}', ' ', consensus.strip())
 
+parser = argparse.ArgumentParser(usage=__doc__)
+parser.add_argument('--orthogroups3', default=False, action='store_true')
+parser.add_argument('orthotable')
+parser.add_argument('annotation')
+parser.add_argument('refs', nargs='?')
+args = parser.parse_args()
+
 
 refs = []
-if len(sys.argv) > 3:
-    refs = sys.argv[3].split(',')
+if args.refs is not None:
+    refs = args.refs.split(',')
 
 annot = {}
-with open(sys.argv[2], 'rt') as ih:
+with open(args.annotation, 'rt') as ih:
     rdr = csv.reader(ih, delimiter='\t')
     for row in rdr:
         annot[row[0]] = (row[1], row[2])
@@ -83,11 +94,21 @@ sys.stdout.write('orthogroup\tsubset\tgene\tdescription')
 for ref in refs:
     sys.stdout.write('\t' + ref)
 sys.stdout.write('\tdescriptions\n')
-with open(sys.argv[1], 'rt') as ih:
+with open(args.orthotable, 'rt') as ih:
     rdr = csv.DictReader(ih, delimiter='\t')
     tin = tempfile.mkstemp(dir='.')[1]
     for row in rdr:
-        genes = row['genes'].split(',')
+        if args.orthogroups3:
+            OG = row['Orthogroup']
+            SS = OG + '.0'
+            genes = []
+            for s in rdr.fieldnames[1:]:
+                for g in row[s].split(', '):
+                    genes.append(s + '_' + g)
+        else:
+            OG = row['orthogroup']
+            SS = row['subset']
+            genes = row['genes'].split(',')
         names = set()
         descriptions = []
         ref_genes = collections.defaultdict(list)
@@ -102,7 +123,7 @@ with open(sys.argv[1], 'rt') as ih:
             consensus_description = get_consensus_description(descriptions, tin)
         else:
             consensus_description = descriptions[0]
-        sys.stdout.writelines([row['orthogroup'], '\t', row['subset'], '\t',
+        sys.stdout.writelines([OG, '\t', SS, '\t',
                                ','.join(n for n in names if n != '' and n != ' '),
                                '\t', consensus_description])
         for ref in refs:
