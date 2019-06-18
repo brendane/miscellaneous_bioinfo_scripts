@@ -104,7 +104,8 @@ with open(args.orthotable, 'rt') as ih:
             genes = []
             for s in rdr.fieldnames[1:]:
                 for g in row[s].split(', '):
-                    genes.append(s + '_' + g)
+                    if len(g) > 0:
+                        genes.append(s + '_' + g)
         else:
             OG = row['orthogroup']
             SS = row['subset']
@@ -113,7 +114,11 @@ with open(args.orthotable, 'rt') as ih:
         descriptions = []
         ref_genes = collections.defaultdict(list)
         for gene in genes:
-            a = annot[gene]
+            try:
+                a = annot[gene]
+            except KeyError:
+                sys.stderr.write('WARNING: skipping %s because it is not found in the annotation file\n' % gene)
+                continue
             names.add(a[0])
             descriptions.append(a[1])
             for ref in refs:
