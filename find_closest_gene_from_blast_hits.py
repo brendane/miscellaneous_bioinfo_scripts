@@ -23,6 +23,7 @@ import csv
 import os
 import os.path as osp
 import tempfile
+import time
 
 from Bio import Entrez
 from Bio.Entrez.Parser import DataHandler
@@ -65,6 +66,7 @@ with open(args.infile, 'rt') as ih:
             with open(tmpfile[0], 'wt') as th:
                 th.write(seq)
             seq_files[gid] = tmpfile[1]
+            time.sleep(20)
 
         ## Store information
         hits[gid].append((s, e, pid, n, gid))
