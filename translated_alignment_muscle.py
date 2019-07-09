@@ -31,11 +31,12 @@ for rec in SeqIO.parse(args.input, 'fasta'):
         ## Pseudogenes and fragments
         rec.seq += 'N' * (3 - len(rec) % 3)
     nucs[rec.description] = rec
-    try:
-        p = str(rec.seq.translate(table=args.table, cds=True))
-    except TranslationError:
-        p = str(rec.seq.translate(table=args.table))
-    prots.append((rec.description, p))
+    if args.protein_aln is None:
+        try:
+            p = str(rec.seq.translate(table=args.table, cds=True))
+        except TranslationError:
+            p = str(rec.seq.translate(table=args.table))
+        prots.append((rec.description, p))
 
 if len(nucs) == 1:
     for n in nucs.values():
@@ -56,7 +57,10 @@ else:
 
     ## Use protein alignment to align nucleotides
     for p in prot_aln:
-        n = nucs[p.description]
+        try:
+            n = nucs[p.description]
+        except KeyError:
+            continue
         aln_n = []
         codon = 0
         for aa in p:

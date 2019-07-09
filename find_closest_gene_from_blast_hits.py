@@ -71,10 +71,6 @@ with open(args.infile, 'rt') as ih:
         ## Store information
         hits[gid].append((s, e, pid, n, gid))
 
-        ## (Temporary) quit after 10 sequences
-        if i == 9:
-            break
-
 ## For each hit, find the closest gene
 with open(args.output, 'wt') as oh:
     for gid, hit_info in hits.items():
