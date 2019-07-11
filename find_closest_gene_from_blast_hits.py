@@ -66,7 +66,7 @@ with open(args.infile, 'rt') as ih:
             with open(tmpfile[0], 'wt') as th:
                 th.write(seq)
             seq_files[gid] = tmpfile[1]
-            time.sleep(20)
+            time.sleep(60)
 
         ## Store information
         hits[gid].append((s, e, pid, n, gid))
