@@ -31,18 +31,21 @@ with open(args.gff, 'rt') as gffh:
     for row  in rdr:
         if row[0].startswith('#'):
             continue
+        if row[2] == 'region':
+            continue
         tags = collections.defaultdict(lambda: '')
         for t in row[8].split(';'):
             tags[t.split('=')[0]] = '='.join(t.split('=')[1:])
         ID = tags['ID']
         parent = tags['Parent']
-        if ID in all_tags:
+        if ID != '' and ID in all_tags:
             all_tags[ID] = combine_tags(tags, all_tags[ID])
-        elif parent in all_tags:
+        elif parent is not None and parent != '' and parent in all_tags:
             all_tags[parent] = combine_tags(tags, all_tags[parent])
-        else:
+        elif ID != '':
             all_tags[ID] = tags
-
+        else:
+            continue
 
 for tags in all_tags.values():
     lt = tags['ID']
