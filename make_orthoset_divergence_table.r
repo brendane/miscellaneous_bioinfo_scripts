@@ -347,11 +347,15 @@ for(i in seq_along(ogs)) {
                 os_info[j, 'min_dups_kaks'] = min(kk[s1_kk == s2_kk, 'ka_ks'], na.rm=TRUE)
             }
 
-            os_pairwise_data[kki, 'pairwise_prot_dist'] = diag(d[kk[, 'gene1'], kk[, 'gene2'], drop=FALSE])
-            os_pairwise_data[kki, 'scc_strain_prot_dist'] = diag(sc_trimmed_mldist[s1_kk, s2_kk, drop=FALSE])
+            #if(which(oss == os) == 25) stop()
+
             os_pairwise_data[kki, 'symbiotic'] = os_info[j, 'symbiotic']
             os_pairwise_data[kki, 'core'] = os_info[j, 'core']
             os_pairwise_data[kki, 'dup'] = as.numeric(s1_kk == s2_kk)
+            for(pair_i in 1:nrow(kk)) {
+                os_pairwise_data[kki[pair_i], 'pairwise_prot_dist'] = d[kk[pair_i, 'gene1'], kk[pair_i, 'gene2'], drop=TRUE]
+                os_pairwise_data[kki[pair_i], 'scc_strain_prot_dist'] = sc_trimmed_mldist[s1_kk[pair_i], s2_kk[pair_i], drop=TRUE]
+            }
         }
     }
 
@@ -427,6 +431,7 @@ for(i in seq_along(ogs)) {
             }
         }
     }
+    gc()
 
 }
 
@@ -496,7 +501,7 @@ os = left_join(os_info,
 left_join(annot_by_og) %>%
 left_join(osets_spp_gen)
 od = left_join(osd_info,
-               odsts[, c('subsubset', 'single_copy', 'strains', 'genes')]) %>%
+               osd[, c('subsubset', 'single_copy', 'strains', 'genes')]) %>%
 left_join(annot_by_og) %>%
 left_join(odsts_spp_gen)
 
@@ -607,7 +612,7 @@ write.table(og_info[og_info[, 'n_genes'] > 0, ],
             col.names=TRUE, row.names=FALSE, quote=FALSE)
 
 
-os_p_d_handle = file(paste0('.orthosets_pairwise_sequence.tsv'), 'w')
+os_p_d_handle = file(paste0(outpre, '.orthosets_pairwise_sequence.tsv'), 'w')
 cat('# orthogroup: OrthoFinder orthogroup\n',
     '# strain1, strain2: the pair of strains in this row\n',
     '# orthoset: subset based on phylogenetic reconcilation\n',
