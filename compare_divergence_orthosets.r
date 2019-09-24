@@ -22,6 +22,8 @@ optlist = list(
                            help='text file with one strain per line'),
                make_option('--targets',
                            help='text file with list of genes to target; if not given, use symbiotic column'),
+               make_option('--kaks',
+                           help='pairwise Ka/Ks values'),
                make_option('--gene-id-column', default='subset',
                            help='column of input file to use as gene IDs; defaults to "subset"; note that most analyses assume that each row is a gene'),
 
@@ -29,6 +31,8 @@ optlist = list(
                            help='Make a table of gene counts'),
                make_option('--compare-strain-count', type='logical', action='store_true', default=FALSE,
                            help='Make plots comparing number of strains in targets and background'),
+               make_option('--compare-copy-number', type='logical', action='store_true', default=FALSE,
+                           help='Make plots comparing number of copies in targets and background'),
                make_option('--compare-protein-divergence', type='logical', action='store_true', default=FALSE,
                            help='Make plots comparing pairwise divergence in targets and background'),
                make_option('--compare-relative-protein-divergence', type='logical', action='store_true', default=FALSE,
@@ -39,6 +43,8 @@ optlist = list(
                            help='Make plots comparing pairwise Ka/Ks in targets and background'),
                make_option('--compare-paralog-kaks', type='logical', action='store_true', default=FALSE,
                            help='Make plots comparing pairwise Ka/Ks of paralogs in targets and background'),
+               make_option('--compare-expected-divergence', type='logical', action='store_true', default=FALSE,
+                           help='Make plots comparing phylogenetic distribution of targets and background'),
 
                make_option('--protein-divergence-sampling-tolerance', type='double',
                            help='Tolerance for matching random gene sets in number of strains and exp. divergence (non-paralog prot. div, Ka/Ks)'),
@@ -62,7 +68,7 @@ strain_file = opts[['options']][['strains']]
 spp_file = opts[['options']][['species']] # ('table/73strains_alpha_complete.species.tsv')
 ka_ks_file = opts[['options']][['kaks']] # ('table/orthoset_pairwise_distances_2019-07-11.kaks.nopseudo.tsv')
 targets_file = opts[['options']][['targets']]
-gene_column = opts[['options']][['--gene-id-column']]
+gene_column = opts[['options']][['gene-id-column']]
 
 if(opts[['options']][['compare-paralog-kaks']]) opts[['options']][['compare-kaks']] = TRUE
 
@@ -80,7 +86,7 @@ if(is.null(targets_file)) {
 }
 
 
-if(options[['count-genes']]) {
+if(opts[['options']][['count-genes']]) {
     ## Count of genes
     counts = data.frame(
                         'Measure'=c('Total genes',
@@ -1060,7 +1066,7 @@ if(opts[['options']][['compare-paralog-kaks']]) {
 
 
 
-if(opts[['options']][['compare-paralog-kaks']]) {
+if(opts[['options']][['compare-expected-divergence']]) {
     ## Compare expected pairwise distances in target genes to the background.
     ## This is a way of looking at the phylogenetic distribution of genes.
     ## Counts each strain once.
