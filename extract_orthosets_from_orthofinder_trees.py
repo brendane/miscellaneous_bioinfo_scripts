@@ -3,11 +3,14 @@
     Break orthogroups into sets of orthologs given a tree from OrthoFinder.
 
     extract_orthosets_from_orthofinder_trees.py --output <output file>
+        [--dups <directory with .dups files>]
         <list of strains> <trees file> <Orthogroups.csv> <Orthogroups_UnassignedGenes.csv>
 """
 
 import argparse
 import csv
+import os
+import os.path as osp
 import sys
 
 import dendropy
@@ -26,6 +29,7 @@ def get_leaf_strains(node, targets=None):
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--output')
+parser.add_argument('--dups')
 parser.add_argument('strainlist')
 parser.add_argument('trees')
 parser.add_argument('orthogroups')
@@ -37,6 +41,17 @@ focal_strains = set()
 with open(args.strainlist, 'rt') as ih:
     for line in ih:
         focal_strains.add(line.strip())
+
+dups = {}
+for fname in os.listdir(args.dups):
+    if fname.endswith('.dups'):
+        strain = osp.splitext(fname)[0]
+        with open(osp.join(args.dups, fname), 'rt') as ih:
+            for line in ih:
+                genes = line.strip().split('\t')
+                if len(genes) > 1:
+                    dups[strain + '_' + genes[0]] = [strain + '_' + g for g in genes[1:]]
+
 
 ## Full list of orthogroups
 orthos = {}
@@ -133,6 +148,8 @@ with open(args.output, 'wt') as oh:
                     if s in focal_strains:
                         strains_in_set.add(s)
                         gg.append(g)
+                        if g in dups:
+                            gg += dups[g]
                 if len(strains_in_set) == 0:
                     continue
 
@@ -157,6 +174,8 @@ with open(args.output, 'wt') as oh:
             if s in focal_strains:
                 strains_in_set.add(s)
                 gg.append(g)
+                if g in dups:
+                    gg += dups[g]
         if len(strains_in_set) == 0:
             continue
         oh.writelines([OG, '\t', OG + '.' + str(i), '\t',
