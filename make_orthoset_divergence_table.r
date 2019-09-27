@@ -347,8 +347,6 @@ for(i in seq_along(ogs)) {
                 os_info[j, 'min_dups_kaks'] = min(kk[s1_kk == s2_kk, 'ka_ks'], na.rm=TRUE)
             }
 
-            #if(which(oss == os) == 25) stop()
-
             os_pairwise_data[kki, 'symbiotic'] = os_info[j, 'symbiotic']
             os_pairwise_data[kki, 'core'] = os_info[j, 'core']
             os_pairwise_data[kki, 'dup'] = as.numeric(s1_kk == s2_kk)

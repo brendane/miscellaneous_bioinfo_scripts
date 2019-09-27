@@ -247,7 +247,7 @@ if(opts[['options']][['compare-copy-number']]) {
     ## the same orthoset more than once per random draw.
     par(mfrow=c(4, 2))
     ngenes = sum(targeted)
-    n_strains_draw = table(osets[targted, 'n_strains'])
+    n_strains_draw = table(osets[targeted, 'n_strains'])
     rands = matrix(nrow=N, ncol=4)
     colnames(rands) = c('p25', 'median', 'mean', 'p75')
     deciles = matrix(nrow=N, ncol=9)
