@@ -22,6 +22,8 @@ optlist = list(
                            help='text file with one strain per line'),
                make_option('--targets',
                            help='text file with list of genes to target; if not given, use symbiotic column'),
+               make_option('--random-targets',
+                           help='tsv file with lists of background genes, one list per column; if not given, background genes are matched on other characteristics'),
                make_option('--kaks',
                            help='pairwise Ka/Ks values'),
                make_option('--gene-id-column', default='subset',
@@ -62,7 +64,14 @@ para_cn_ng_tol = opts[['options']][['paralog-divergence-sampling-tolerance']]
 
 orthofile = opts[['args']][1]   # tsv file with one line per gene set and summaries of annotation and divergence stats 'table/orthosets_data.73strains_alpha_complete.nopseudo.2019-07-31.tsv'
 outpre = opts[['options']][['output']]
-N = opts[['options']][['n-random-draws']]
+if(is.null(opts[['options']][['random-targets']])) {
+    background = NULL
+    N = opts[['options']][['n-random-draws']]
+} else {
+    background = read.csv(opts[['options']][['random-targets']],
+                          sep='\t', header=FALSE, as.is=TRUE)
+    N = ncol(background)
+}
 
 strain_file = opts[['options']][['strains']]
 spp_file = opts[['options']][['species']] # ('table/73strains_alpha_complete.species.tsv')
@@ -159,7 +168,11 @@ if(opts[['options']][['compare-strain-count']]) {
     colnames(rands) = c('p25', 'median', 'mean', 'p75')
     deciles = matrix(nrow=N, ncol=9)
     for(i in 1:N) {
-        r = sample(osets[!targeted, 'n_strains'], ngenes, FALSE)
+        if(is.null(background)) {
+            r = sample(osets[!targeted, 'n_strains'], ngenes, FALSE)
+        } else {
+            r = osets[osets[, gene_column] %in% background[, i], 'n_strains']
+        }
         rands[i, 'p25'] = quantile(r, 0.25)
         rands[i, 'p75'] = quantile(r, 0.75)
         rands[i, 'mean'] = mean(r)
@@ -252,14 +265,18 @@ if(opts[['options']][['compare-copy-number']]) {
     colnames(rands) = c('p25', 'median', 'mean', 'p75')
     deciles = matrix(nrow=N, ncol=9)
     for(i in 1:N) {
-        r = numeric(ngenes)
-        k = 1
-        for(j in seq_along(n_strains_draw)) {
-            s = sample(mean_copy_number[!targeted & osets[, 'n_strains'] == as.numeric(names(n_strains_draw)[j])],
-                       n_strains_draw[j],
-                       FALSE)
-            r[k:(k+length(s)-1)] = s
-            k = k + length(s)
+        if(is.null(background)) {
+            r = numeric(ngenes)
+            k = 1
+            for(j in seq_along(n_strains_draw)) {
+                s = sample(mean_copy_number[!targeted & osets[, 'n_strains'] == as.numeric(names(n_strains_draw)[j])],
+                           n_strains_draw[j],
+                           FALSE)
+                r[k:(k+length(s)-1)] = s
+                k = k + length(s)
+            }
+        } else {
+            r = mean_copy_number[osets[, gene_column] %in% background[, i]]
         }
         rands[i, 'p25'] = quantile(r, 0.25)
         rands[i, 'p75'] = quantile(r, 0.75)
@@ -289,7 +306,7 @@ if(opts[['options']][['compare-copy-number']]) {
 
 
     plot(quantile(mean_copy_number[targeted], seq(0.1, 0.9, 0.1)),
-         pch=19, cex=1.5, col='black', ylim=c(0.9, 2.5), bty='n',
+         pch=19, cex=1.5, col='black', ylim=c(0.9, max(mean_copy_number[targeted], max(deciles))), bty='n',
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='mean copy number', xlab='decile',
          main='copy number', xpd=NA)
@@ -377,23 +394,27 @@ if(opts[['options']][['compare-protein-divergence']]) {
     colnames(rands) = c('p25', 'median', 'mean', 'p75')
     deciles = matrix(nrow=N, ncol=9)
     for(i in 1:N) {
-        r = numeric(ngenes)
-        for(j in seq_along(n_genes_draw)) {
-            ng = n_genes_draw[j]
-            de = med_exp_draw[j]
-            ne = min_exp_draw[j]
-            xe = max_exp_draw[j]
-            choices =
-            !targeted &
-            osets[, 'expected_median_copynumber'] <= de * (1+prot_div_tol) &
-            osets[, 'expected_median_copynumber'] >= de * (1-prot_div_tol) &
-            osets[, 'expected_min_copynumber'] <= ne * (1+prot_div_tol) &
-            osets[, 'expected_min_copynumber'] >= ne * (1-prot_div_tol) &
-            osets[, 'expected_max_copynumber'] <= xe * (1+prot_div_tol) &
-            osets[, 'expected_max_copynumber'] >= xe * (1-prot_div_tol) &
-            osets[, 'n_genes'] <= ng * (1+prot_div_tol) &
-            osets[, 'n_genes'] >= ng * (1-prot_div_tol)
-            r[j] = sample(median_prot_dist[choices], 1)
+        if(is.null(background)) {
+            r = numeric(ngenes)
+            for(j in seq_along(n_genes_draw)) {
+                ng = n_genes_draw[j]
+                de = med_exp_draw[j]
+                ne = min_exp_draw[j]
+                xe = max_exp_draw[j]
+                choices =
+                !targeted &
+                osets[, 'expected_median_copynumber'] <= de * (1+prot_div_tol) &
+                osets[, 'expected_median_copynumber'] >= de * (1-prot_div_tol) &
+                osets[, 'expected_min_copynumber'] <= ne * (1+prot_div_tol) &
+                osets[, 'expected_min_copynumber'] >= ne * (1-prot_div_tol) &
+                osets[, 'expected_max_copynumber'] <= xe * (1+prot_div_tol) &
+                osets[, 'expected_max_copynumber'] >= xe * (1-prot_div_tol) &
+                osets[, 'n_genes'] <= ng * (1+prot_div_tol) &
+                osets[, 'n_genes'] >= ng * (1-prot_div_tol)
+                r[j] = sample(median_prot_dist[choices], 1)
+            }
+        } else {
+            r = median_prot_dist[osets[, gene_column] %in% background[, i]]
         }
         rands[i, 'p25'] = quantile(r, 0.25, na.rm=TRUE)
         rands[i, 'p75'] = quantile(r, 0.75, na.rm=TRUE)
@@ -524,25 +545,30 @@ if(opts[['options']][['compare-relative-protein-divergence']]) {
     deciles = matrix(nrow=N, ncol=9)
     ldeciles = deciles
     for(i in 1:N) {
-        r = numeric(ngenes)
-        lr = numeric(ngenes)
-        for(j in seq_along(n_genes_draw)) {
-            ng = n_genes_draw[j]
-            de = med_exp_draw[j]
-            ne = min_exp_draw[j]
-            xe = max_exp_draw[j]
-            choices =
-            !targeted &
-            osets[, 'expected_median_copynumber'] <= de * (1+prot_div_tol) &
-            osets[, 'expected_median_copynumber'] >= de * (1-prot_div_tol) &
-            osets[, 'expected_min_copynumber'] <= ne * (1+prot_div_tol) &
-            osets[, 'expected_min_copynumber'] >= ne * (1-prot_div_tol) &
-            osets[, 'expected_max_copynumber'] <= xe * (1+prot_div_tol) &
-            osets[, 'expected_max_copynumber'] >= xe * (1-prot_div_tol) &
-            osets[, 'n_genes'] <= ng * (1+prot_div_tol) &
-            osets[, 'n_genes'] >= ng * (1-prot_div_tol)
-            r[j] = sample(median_rel_prot_dist[choices], 1)
-            lr[j] = sample(lmedian_rel_prot_dist[choices], 1)
+        if(is.null(background)) {
+            r = numeric(ngenes)
+            lr = numeric(ngenes)
+            for(j in seq_along(n_genes_draw)) {
+                ng = n_genes_draw[j]
+                de = med_exp_draw[j]
+                ne = min_exp_draw[j]
+                xe = max_exp_draw[j]
+                choices =
+                !targeted &
+                osets[, 'expected_median_copynumber'] <= de * (1+prot_div_tol) &
+                osets[, 'expected_median_copynumber'] >= de * (1-prot_div_tol) &
+                osets[, 'expected_min_copynumber'] <= ne * (1+prot_div_tol) &
+                osets[, 'expected_min_copynumber'] >= ne * (1-prot_div_tol) &
+                osets[, 'expected_max_copynumber'] <= xe * (1+prot_div_tol) &
+                osets[, 'expected_max_copynumber'] >= xe * (1-prot_div_tol) &
+                osets[, 'n_genes'] <= ng * (1+prot_div_tol) &
+                osets[, 'n_genes'] >= ng * (1-prot_div_tol)
+                r[j] = sample(median_rel_prot_dist[choices], 1)
+                lr[j] = sample(lmedian_rel_prot_dist[choices], 1)
+            }
+        } else {
+            r = median_rel_prot_dist[osets[, gene_column] %in% background[, i]]
+            lr = lmedian_rel_prot_dist[osets[, gene_column] %in% background[, i]]
         }
         rands[i, 'p25'] = quantile(r, 0.25, na.rm=TRUE)
         rands[i, 'p75'] = quantile(r, 0.75, na.rm=TRUE)
@@ -671,17 +697,21 @@ if(opts[['options']][['compare-paralog-protein-divergence']]) {
     colnames(rands) = c('p25', 'median', 'mean', 'p75')
     deciles = matrix(nrow=N, ncol=9)
     for(i in 1:N) {
-        r = numeric(ngenes)
-        for(j in seq_along(n_genes_draw)) {
-            ng = n_genes_draw[j]
-            cn = cn_draw[j]
-            choices =
-            !targeted &
-            copy_number <= cn * (1+para_cn_ng_tol) &
-            copy_number >= cn * (1-para_cn_ng_tol) &
-            osets[, 'n_genes'] <= ng * (1+para_cn_ng_tol) &
-            osets[, 'n_genes'] >= ng * (1-para_cn_ng_tol)
-            r[j] = sample(median_para_prot_dist[choices], 1)
+        if(is.null(background)) {
+            r = numeric(ngenes)
+            for(j in seq_along(n_genes_draw)) {
+                ng = n_genes_draw[j]
+                cn = cn_draw[j]
+                choices =
+                !targeted &
+                copy_number <= cn * (1+para_cn_ng_tol) &
+                copy_number >= cn * (1-para_cn_ng_tol) &
+                osets[, 'n_genes'] <= ng * (1+para_cn_ng_tol) &
+                osets[, 'n_genes'] >= ng * (1-para_cn_ng_tol)
+                r[j] = sample(median_para_prot_dist[choices], 1)
+            }
+        } else {
+            r = median_para_prot_dist[osets[, gene_column] %in% background[, i]]
         }
         rands[i, 'p25'] = quantile(r, 0.25, na.rm=TRUE)
         rands[i, 'p75'] = quantile(r, 0.75, na.rm=TRUE)
@@ -824,25 +854,30 @@ if(opts[['options']][['compare-kaks']]) {
     deciles = matrix(nrow=N, ncol=9)
     ldeciles = deciles
     for(i in 1:N) {
-        r = numeric(ngenes)
-        lr = numeric(ngenes)
-        for(j in seq_along(n_genes_draw)) {
-            ng = n_genes_draw[j]
-            de = med_exp_draw[j]
-            ne = min_exp_draw[j]
-            xe = max_exp_draw[j]
-            choices =
-            !targeted &
-            osets[, 'expected_median_copynumber'] <= de * (1+prot_div_tol) &
-            osets[, 'expected_median_copynumber'] >= de * (1-prot_div_tol) &
-            osets[, 'expected_min_copynumber'] <= ne * (1+prot_div_tol) &
-            osets[, 'expected_min_copynumber'] >= ne * (1-prot_div_tol) &
-            osets[, 'expected_max_copynumber'] <= xe * (1+prot_div_tol) &
-            osets[, 'expected_max_copynumber'] >= xe * (1-prot_div_tol) &
-            osets[, 'n_genes'] <= ng * (1+prot_div_tol) &
-            osets[, 'n_genes'] >= ng * (1-prot_div_tol)
-            r[j] = sample(median_kaks[choices], 1)
-            lr[j] = sample(lmedian_kaks[choices], 1)
+        if(is.null(background)) {
+            r = numeric(ngenes)
+            lr = numeric(ngenes)
+            for(j in seq_along(n_genes_draw)) {
+                ng = n_genes_draw[j]
+                de = med_exp_draw[j]
+                ne = min_exp_draw[j]
+                xe = max_exp_draw[j]
+                choices =
+                !targeted &
+                osets[, 'expected_median_copynumber'] <= de * (1+prot_div_tol) &
+                osets[, 'expected_median_copynumber'] >= de * (1-prot_div_tol) &
+                osets[, 'expected_min_copynumber'] <= ne * (1+prot_div_tol) &
+                osets[, 'expected_min_copynumber'] >= ne * (1-prot_div_tol) &
+                osets[, 'expected_max_copynumber'] <= xe * (1+prot_div_tol) &
+                osets[, 'expected_max_copynumber'] >= xe * (1-prot_div_tol) &
+                osets[, 'n_genes'] <= ng * (1+prot_div_tol) &
+                osets[, 'n_genes'] >= ng * (1-prot_div_tol)
+                r[j] = sample(median_kaks[choices], 1)
+                lr[j] = sample(lmedian_kaks[choices], 1)
+            }
+        } else {
+            r = median_kaks[osets[, gene_column] %in% background[, i]]
+            lr = lmedian_kaks[osets[, gene_column] %in% background[, i]]
         }
         rands[i, 'p25'] = quantile(r, 0.25, na.rm=TRUE)
         rands[i, 'p75'] = quantile(r, 0.75, na.rm=TRUE)
@@ -976,17 +1011,21 @@ if(opts[['options']][['compare-paralog-kaks']]) {
      colnames(rands) = c('p25', 'median', 'mean', 'p75')
      deciles = matrix(nrow=N, ncol=9)
      for(i in 1:N) {
-         r = numeric(ngenes)
-         for(j in seq_along(n_genes_draw)) {
-             ng = n_genes_draw[j]
-             cn = cn_draw[j]
-             choices =
-             !targeted &
-             copy_number <= cn * (1+para_cn_ng_tol) &
-             copy_number >= cn * (1-para_cn_ng_tol) &
-             osets[, 'n_genes'] <= ng * (1+para_cn_ng_tol) &
-             osets[, 'n_genes'] >= ng * (1-para_cn_ng_tol)
-             r[j] = sample(median_para_kaks[choices], 1)
+         if(is.null(background)) {
+             r = numeric(ngenes)
+             for(j in seq_along(n_genes_draw)) {
+                 ng = n_genes_draw[j]
+                 cn = cn_draw[j]
+                 choices =
+                 !targeted &
+                 copy_number <= cn * (1+para_cn_ng_tol) &
+                 copy_number >= cn * (1-para_cn_ng_tol) &
+                 osets[, 'n_genes'] <= ng * (1+para_cn_ng_tol) &
+                 osets[, 'n_genes'] >= ng * (1-para_cn_ng_tol)
+                 r[j] = sample(median_para_kaks[choices], 1)
+             }
+         } else {
+             r = median_para_kaks[osets[, gene_column] %in% background[, i]]
          }
          rands[i, 'p25'] = quantile(r, 0.25, na.rm=TRUE)
          rands[i, 'p75'] = quantile(r, 0.75, na.rm=TRUE)
@@ -1138,18 +1177,23 @@ if(opts[['options']][['compare-expected-divergence']]) {
     xrands = mrands
     xdeciles = mdeciles
     for(i in 1:N) {
-        r_med = numeric(ngenes)
-        r_max = numeric(ngenes)
-        k = 1
-        for(j in seq_along(n_strains_draw)) {
-            ii = sample(which(!targeted & osets[, 'n_strains'] == as.numeric(names(n_strains_draw)[j])),
-                        n_strains_draw[j],
-                        FALSE)
-            sm = median_exp_div[ii]
-            sx = max_exp_div[ii]
-            r_med[k:(k+length(ii)-1)] = sm
-            r_max[k:(k+length(ii)-1)] = sx
-            k = k + length(ii)
+        if(is.null(background)) {
+            r_med = numeric(ngenes)
+            r_max = numeric(ngenes)
+            k = 1
+            for(j in seq_along(n_strains_draw)) {
+                ii = sample(which(!targeted & osets[, 'n_strains'] == as.numeric(names(n_strains_draw)[j])),
+                            n_strains_draw[j],
+                            FALSE)
+                sm = median_exp_div[ii]
+                sx = max_exp_div[ii]
+                r_med[k:(k+length(ii)-1)] = sm
+                r_max[k:(k+length(ii)-1)] = sx
+                k = k + length(ii)
+            }
+        } else {
+            r_med = median_exp_div[osets[, gene_column] %in% background[, i]]
+            r_max = max_exp_div[osets[, gene_column] %in% background[, i]]
         }
         mrands[i, 'p25'] = quantile(r_med, 0.25)
         mrands[i, 'p75'] = quantile(r_med, 0.75)
