@@ -10,6 +10,7 @@
         --dups <directory with .dups files (optional) containing identical duplicates>
         --species <species names file: one column for strain, one column for species>
         --no-pseudo <flag to exclude pseudogenes>
+        --no-fragment <flag to exclude fragments>
         --exclude <file with list of strain names to exclude>
 
     Assumes single underscore separates strain and gene names and that
@@ -30,6 +31,7 @@ parser.add_argument('--gene-annotation')
 parser.add_argument('--dups')
 parser.add_argument('--species')
 parser.add_argument('--no-pseudo', default=False, action='store_true')
+parser.add_argument('--no-fragment', default=False, action='store_true')
 parser.add_argument('--exclude')
 args = parser.parse_args()
 
@@ -51,7 +53,9 @@ pseudo = set()
 with open(args.gene_annotation, 'rt') as ih:
     rdr = csv.reader(ih, delimiter='\t')
     for row in rdr:
-        if row[4] == '1':
+        if args.no_pseudo and row[4] == '1':
+            pseudo.add(row[0])
+        if args.no_fragment and row[3] == '1':
             pseudo.add(row[0])
 
 annot = {}
@@ -101,7 +105,7 @@ with open(args.output, 'wt') as oh:
             species = set()
             genera = set()
             for g in row['genes'].split(','):
-                if args.no_pseudo and g in pseudo:
+                if (args.no_pseudo or args.no_fragment) and g in pseudo:
                     continue
                 strain = g.split('_')[0]
                 if strain in exclude:
