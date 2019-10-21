@@ -4,6 +4,7 @@
     other information.
 
     combine_orthofinder_dup_annotation_orthosets.py --output <output file>
+        --use-orthogroups <flag to work on orthogroups instead of orthosets>
         --orthosets <orthoset table from extract_orthosets_from_orthofinder_trees.py>
         --annotation <annotation file from combine_orthotable_and_annotations.py>
         --gene-annotation <annotation file with columns for strain, gene, product, partial, and pseudogene status>
@@ -12,6 +13,7 @@
         --no-pseudo <flag to exclude pseudogenes>
         --no-fragment <flag to exclude fragments>
         --exclude <file with list of strain names to exclude>
+        --min-strains <minimum number of strains for a gene to be included>
 
     Assumes single underscore separates strain and gene names and that
     the strain name is included except in the dups files. Also, will
@@ -20,6 +22,7 @@
 
 import argparse
 import csv
+import itertools
 import os
 import os.path as osp
 
@@ -32,8 +35,14 @@ parser.add_argument('--dups')
 parser.add_argument('--species')
 parser.add_argument('--no-pseudo', default=False, action='store_true')
 parser.add_argument('--no-fragment', default=False, action='store_true')
+parser.add_argument('--use-orthogroups', default=False, action='store_true')
 parser.add_argument('--exclude')
+parser.add_argument('--min-strains', type=int, default=0)
 args = parser.parse_args()
+
+column = 'subset'
+if args.use_orthogroups:
+    column = 'orthogroup'
 
 dups = {}
 if args.dups is not None:
@@ -97,27 +106,32 @@ with open(args.output, 'wt') as oh:
              'strains\tgenes\n')
     with open(args.orthosets, 'rt') as ih:
         rdr = csv.DictReader(ih, delimiter='\t')
-        for row in rdr:
-            og = row['orthogroup']
-            os = row['subset']
+        for _, rows in itertools.groupby(rdr, lambda x: x[column]):
             genes = []
             strains = set()
             species = set()
             genera = set()
-            for g in row['genes'].split(','):
-                if (args.no_pseudo or args.no_fragment) and g in pseudo:
-                    continue
-                strain = g.split('_')[0]
-                if strain in exclude:
-                    continue
-                genes.append(g)
-                if g in dups:
-                    for d in dups[g]:
-                        genes.append(d)
-                strains.add(strain)
-                species.add(spp[strain])
-                genera.add(gen[strain])
+            for row in rows:
+                og = row['orthogroup']
+                os = row['subset']
+                if args.use_orthogroups:
+                    os = row['orthogroup']
+                for g in row['genes'].split(','):
+                    if (args.no_pseudo or args.no_fragment) and g in pseudo:
+                        continue
+                    strain = g.split('_')[0]
+                    if strain in exclude:
+                        continue
+                    genes.append(g)
+                    if g in dups:
+                        for d in dups[g]:
+                            genes.append(d)
+                    strains.add(strain)
+                    species.add(spp[strain])
+                    genera.add(gen[strain])
             if len(genes) == 0:
+                continue
+            if len(strains) < args.min_strains:
                 continue
             result =[og,
                      os,

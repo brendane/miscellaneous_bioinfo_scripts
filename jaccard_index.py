@@ -12,6 +12,7 @@ import csv
 import sys
 
 parser = argparse.ArgumentParser(usage=__doc__)
+parser.add_argument('--min-strains', default=0, type=int)
 parser.add_argument('input')
 parser.add_argument('column')
 args = parser.parse_args()
@@ -22,6 +23,8 @@ with open(args.input, 'rt') as ih:
     rdr = csv.DictReader(filter(lambda x: not x.startswith('#'), ih), delimiter='\t')
     for i, row in enumerate(rdr):
         groups = row[args.column].split(',')
+        if len(groups) < args.min_strains:
+            continue
         for g1 in groups:
             total[g1] += 1
             for g2 in groups:
