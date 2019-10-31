@@ -166,7 +166,7 @@ if(opts[['options']][['compare-strain-count']]) {
     ngenes = sum(targeted)
     rands = matrix(nrow=N, ncol=4)
     colnames(rands) = c('p25', 'median', 'mean', 'p75')
-    deciles = matrix(nrow=N, ncol=9)
+    deciles = matrix(nrow=N, ncol=10)
     for(i in 1:N) {
         if(is.null(background)) {
             r = sample(osets[!targeted, 'n_strains'], ngenes, FALSE)
@@ -177,7 +177,7 @@ if(opts[['options']][['compare-strain-count']]) {
         rands[i, 'p75'] = quantile(r, 0.75)
         rands[i, 'mean'] = mean(r)
         rands[i, 'median'] = median(r)
-        deciles[i, ] = quantile(r, seq(0.1, 0.9, 0.1))
+        deciles[i, ] = quantile(r, seq(0.1, 1, 0.1))
     }
 
     par(mfcol=c(4, 2))
@@ -205,7 +205,7 @@ if(opts[['options']][['compare-strain-count']]) {
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='# Strains', xlab='decile',
          main='# strains / orthoset')
-    boxplot(deciles, add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
+    boxplot(deciles[, 1:9], add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
             border='gray60')
     legend('topleft', legend=c('Targets', 'Random'), fill=c('black', 'gray'))
     axis(side=1, at=1:9)
@@ -214,7 +214,7 @@ if(opts[['options']][['compare-strain-count']]) {
     par(op)
     dev.off()
 
-    write.table(rbind(quantile(osets[targeted, 'n_strains'], seq(0.1, 0.9, 0.1)),
+    write.table(rbind(quantile(osets[targeted, 'n_strains'], seq(0.1, 1, 0.1)),
                       deciles),
                 file=paste0(outpre, '.strain_count_comparison.deciles.tsv'),
                 sep='\t', col.names=FALSE, row.names=FALSE, quote=FALSE)
@@ -263,7 +263,7 @@ if(opts[['options']][['compare-copy-number']]) {
     n_strains_draw = table(osets[targeted, 'n_strains'])
     rands = matrix(nrow=N, ncol=4)
     colnames(rands) = c('p25', 'median', 'mean', 'p75')
-    deciles = matrix(nrow=N, ncol=9)
+    deciles = matrix(nrow=N, ncol=10)
     for(i in 1:N) {
         if(is.null(background)) {
             r = numeric(ngenes)
@@ -282,7 +282,7 @@ if(opts[['options']][['compare-copy-number']]) {
         rands[i, 'p75'] = quantile(r, 0.75)
         rands[i, 'mean'] = mean(r)
         rands[i, 'median'] = median(r)
-        deciles[i, ] = quantile(r, seq(0.1, 0.9, 0.1))
+        deciles[i, ] = quantile(r, seq(0.1, 1, 0.1))
     }
 
     par(mfcol=c(4, 2))
@@ -310,7 +310,7 @@ if(opts[['options']][['compare-copy-number']]) {
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='mean copy number', xlab='decile',
          main='copy number', xpd=NA)
-    boxplot(deciles, add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
+    boxplot(deciles[, 1:9], add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
             border='gray60', xpd=NA)
     legend('topleft', legend=c('Targets', 'Random'), fill=c('black', 'gray'))
     axis(side=1, at=1:9)
@@ -335,7 +335,7 @@ if(opts[['options']][['compare-copy-number']]) {
 
     dev.off()
 
-    write.table(rbind(quantile(mean_copy_number[targeted], seq(0.1, 0.9, 0.1)),
+    write.table(rbind(quantile(mean_copy_number[targeted], seq(0.1, 1, 0.1)),
                       deciles),
                 file=paste0(outpre, '.copy_number_comparison.deciles.tsv'),
                 sep='\t', col.names=FALSE, row.names=FALSE, quote=FALSE)
@@ -392,7 +392,7 @@ if(opts[['options']][['compare-protein-divergence']]) {
     max_exp_draw = osets[targeted, 'expected_max_copynumber']
     rands = matrix(nrow=N, ncol=4)
     colnames(rands) = c('p25', 'median', 'mean', 'p75')
-    deciles = matrix(nrow=N, ncol=9)
+    deciles = matrix(nrow=N, ncol=10)
     for(i in 1:N) {
         if(is.null(background)) {
             r = numeric(ngenes)
@@ -420,7 +420,7 @@ if(opts[['options']][['compare-protein-divergence']]) {
         rands[i, 'p75'] = quantile(r, 0.75, na.rm=TRUE)
         rands[i, 'mean'] = mean(r, na.rm=TRUE)
         rands[i, 'median'] = median(r, na.rm=TRUE)
-        deciles[i, ] = quantile(r, seq(0.1, 0.9, 0.1), na.rm=TRUE)
+        deciles[i, ] = quantile(r, seq(0.1, 1, 0.1), na.rm=TRUE)
     }
 
     par(mfcol=c(4, 2))
@@ -448,7 +448,7 @@ if(opts[['options']][['compare-protein-divergence']]) {
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='median pairwise protein distance', xlab='decile',
          main='divergence', xpd=NA)
-    boxplot(deciles, add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
+    boxplot(deciles[, 1:9], add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
             border='gray60', xpd=NA)
     legend('topleft', legend=c('Targets', 'Random'), fill=c('black', 'gray'))
     axis(side=1, at=1:9)
@@ -456,7 +456,7 @@ if(opts[['options']][['compare-protein-divergence']]) {
 
     dev.off()
 
-    write.table(rbind(quantile(median_prot_dist[targeted], seq(0.1, 0.9, 0.1), na.rm=TRUE),
+    write.table(rbind(quantile(median_prot_dist[targeted], seq(0.1, 1, 0.1), na.rm=TRUE),
                       deciles),
                 file=paste0(outpre, '.protein_divergence_comparison.deciles.tsv'),
                 sep='\t', col.names=FALSE, row.names=FALSE, quote=FALSE)
@@ -542,7 +542,7 @@ if(opts[['options']][['compare-relative-protein-divergence']]) {
     rands = matrix(nrow=N, ncol=4)
     colnames(rands) = c('p25', 'median', 'mean', 'p75')
     lrands = rands
-    deciles = matrix(nrow=N, ncol=9)
+    deciles = matrix(nrow=N, ncol=10)
     ldeciles = deciles
     for(i in 1:N) {
         if(is.null(background)) {
@@ -574,12 +574,12 @@ if(opts[['options']][['compare-relative-protein-divergence']]) {
         rands[i, 'p75'] = quantile(r, 0.75, na.rm=TRUE)
         rands[i, 'mean'] = mean(r)
         rands[i, 'median'] = median(r, na.rm=TRUE)
-        deciles[i, ] = quantile(r, seq(0.1, 0.9, 0.1), na.rm=TRUE)
+        deciles[i, ] = quantile(r, seq(0.1, 1, 0.1), na.rm=TRUE)
         lrands[i, 'p25'] = quantile(lr, 0.25, na.rm=TRUE)
         lrands[i, 'p75'] = quantile(lr, 0.75, na.rm=TRUE)
         lrands[i, 'mean'] = mean(lr, na.rm=TRUE)
         lrands[i, 'median'] = median(lr, na.rm=TRUE)
-        ldeciles[i, ] = quantile(lr, seq(0.1, 0.9, 0.1), na.rm=TRUE)
+        ldeciles[i, ] = quantile(lr, seq(0.1, 1, 0.1), na.rm=TRUE)
     }
 
     par(mfcol=c(4, 2))
@@ -623,7 +623,7 @@ if(opts[['options']][['compare-relative-protein-divergence']]) {
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='median relative pairwise protein distance', xlab='decile',
          main='relative divergence', xpd=NA)
-    boxplot(deciles, add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
+    boxplot(deciles[, 1:9], add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
             border='gray60', xpd=NA)
     legend('topleft', legend=c('Targets', 'Random'), fill=c('black', 'gray'))
     axis(side=1, at=1:9)
@@ -635,7 +635,7 @@ if(opts[['options']][['compare-relative-protein-divergence']]) {
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='log2(median relative pairwise protein distance)', xlab='decile',
          main='relative divergence', xpd=NA)
-    boxplot(ldeciles, add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
+    boxplot(ldeciles[, 1:9], add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
             border='gray60', xpd=NA)
     legend('topleft', legend=c('Targets', 'Random'), fill=c('black', 'gray'))
     axis(side=1, at=1:9)
@@ -643,7 +643,7 @@ if(opts[['options']][['compare-relative-protein-divergence']]) {
 
     dev.off()
 
-    write.table(rbind(quantile(median_rel_prot_dist[targeted], seq(0.1, 0.9, 0.1), na.rm=TRUE),
+    write.table(rbind(quantile(median_rel_prot_dist[targeted], seq(0.1, 1, 0.1), na.rm=TRUE),
                       deciles),
                 file=paste0(outpre, '.relative_protein_divergence_comparison.deciles.tsv'),
                 sep='\t', col.names=FALSE, row.names=FALSE, quote=FALSE)
@@ -695,7 +695,7 @@ if(opts[['options']][['compare-paralog-protein-divergence']]) {
     cn_draw = copy_number[targeted]
     rands = matrix(nrow=N, ncol=4)
     colnames(rands) = c('p25', 'median', 'mean', 'p75')
-    deciles = matrix(nrow=N, ncol=9)
+    deciles = matrix(nrow=N, ncol=10)
     for(i in 1:N) {
         if(is.null(background)) {
             r = numeric(ngenes)
@@ -717,7 +717,7 @@ if(opts[['options']][['compare-paralog-protein-divergence']]) {
         rands[i, 'p75'] = quantile(r, 0.75, na.rm=TRUE)
         rands[i, 'mean'] = mean(r, na.rm=TRUE)
         rands[i, 'median'] = median(r, na.rm=TRUE)
-        deciles[i, ] = quantile(r, seq(0.1, 0.9, 0.1), na.rm=TRUE)
+        deciles[i, ] = quantile(r, seq(0.1, 1, 0.1), na.rm=TRUE)
     }
 
     par(mfcol=c(4, 2))
@@ -745,7 +745,7 @@ if(opts[['options']][['compare-paralog-protein-divergence']]) {
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='median pairwise protein distance b/n duplications', xlab='decile',
          main='divergence between paralogs', xpd=NA)
-    boxplot(deciles, add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
+    boxplot(deciles[, 1:9], add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
             border='gray60', xpd=NA)
     legend('topleft', legend=c('Targets', 'Random'), fill=c('black', 'gray'))
     axis(side=1, at=1:9)
@@ -769,7 +769,7 @@ if(opts[['options']][['compare-paralog-protein-divergence']]) {
 
     dev.off()
 
-    write.table(rbind(quantile(median_para_prot_dist[targeted], seq(0.1, 0.9, 0.1), na.rm=TRUE),
+    write.table(rbind(quantile(median_para_prot_dist[targeted], seq(0.1, 1, 0.1), na.rm=TRUE),
                       deciles),
                 file=paste0(outpre, '.paralog_protein_divergence_comparison.deciles.tsv'),
                 sep='\t', col.names=FALSE, row.names=FALSE, quote=FALSE)
@@ -851,7 +851,7 @@ if(opts[['options']][['compare-kaks']]) {
     rands = matrix(nrow=N, ncol=4)
     colnames(rands) = c('p25', 'median', 'mean', 'p75')
     lrands = rands
-    deciles = matrix(nrow=N, ncol=9)
+    deciles = matrix(nrow=N, ncol=10)
     ldeciles = deciles
     for(i in 1:N) {
         if(is.null(background)) {
@@ -883,12 +883,12 @@ if(opts[['options']][['compare-kaks']]) {
         rands[i, 'p75'] = quantile(r, 0.75, na.rm=TRUE)
         rands[i, 'mean'] = mean(r, na.rm=TRUE)
         rands[i, 'median'] = median(r, na.rm=TRUE)
-        deciles[i, ] = quantile(r, seq(0.1, 0.9, 0.1), na.rm=TRUE)
+        deciles[i, ] = quantile(r, seq(0.1, 1, 0.1), na.rm=TRUE)
         lrands[i, 'p25'] = quantile(lr, 0.25, na.rm=TRUE)
         lrands[i, 'p75'] = quantile(lr, 0.75, na.rm=TRUE)
         lrands[i, 'mean'] = mean(lr, na.rm=TRUE)
         lrands[i, 'median'] = median(lr, na.rm=TRUE)
-        ldeciles[i, ] = quantile(lr, seq(0.1, 0.9, 0.1), na.rm=TRUE)
+        ldeciles[i, ] = quantile(lr, seq(0.1, 1, 0.1), na.rm=TRUE)
     }
 
     par(mfcol=c(4, 2))
@@ -932,7 +932,7 @@ if(opts[['options']][['compare-kaks']]) {
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='median Ka/Ks', xlab='decile',
          main='KaKs', xpd=NA)
-    boxplot(deciles, add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
+    boxplot(deciles[, 1:9], add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
             border='gray60', xpd=NA)
     legend('topleft', legend=c('Targets', 'Random'), fill=c('black', 'gray'))
     axis(side=1, at=1:9)
@@ -944,7 +944,7 @@ if(opts[['options']][['compare-kaks']]) {
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='log2(median kaks)', xlab='decile',
          main='KaKs', xpd=NA)
-    boxplot(ldeciles, add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
+    boxplot(ldeciles[, 1:9], add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
             border='gray60', xpd=NA)
     legend('topleft', legend=c('Targets', 'Random'), fill=c('black', 'gray'))
     axis(side=1, at=1:9)
@@ -952,7 +952,7 @@ if(opts[['options']][['compare-kaks']]) {
 
     dev.off()
 
-    write.table(rbind(quantile(median_kaks[targeted], seq(0.1, 0.9, 0.1), na.rm=TRUE),
+    write.table(rbind(quantile(median_kaks[targeted], seq(0.1, 1, 0.1), na.rm=TRUE),
                       deciles),
                 file=paste0(outpre, '.kaks_comparison.deciles.tsv'),
                 sep='\t', col.names=FALSE, row.names=FALSE, quote=FALSE)
@@ -1009,7 +1009,7 @@ if(opts[['options']][['compare-paralog-kaks']]) {
      cn_draw = copy_number[targeted]
      rands = matrix(nrow=N, ncol=4)
      colnames(rands) = c('p25', 'median', 'mean', 'p75')
-     deciles = matrix(nrow=N, ncol=9)
+     deciles = matrix(nrow=N, ncol=10)
      for(i in 1:N) {
          if(is.null(background)) {
              r = numeric(ngenes)
@@ -1031,7 +1031,7 @@ if(opts[['options']][['compare-paralog-kaks']]) {
          rands[i, 'p75'] = quantile(r, 0.75, na.rm=TRUE)
          rands[i, 'mean'] = mean(r, na.rm=TRUE)
          rands[i, 'median'] = median(r, na.rm=TRUE)
-         deciles[i, ] = quantile(r, seq(0.1, 0.9, 0.1), na.rm=TRUE)
+         deciles[i, ] = quantile(r, seq(0.1, 1, 0.1), na.rm=TRUE)
      }
 
      par(mfcol=c(4, 2))
@@ -1059,7 +1059,7 @@ if(opts[['options']][['compare-paralog-kaks']]) {
           xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
           ylab='median pairwise KaKs b/n duplications', xlab='decile',
           main='Ka/Ks between paralogs', xpd=NA)
-     boxplot(deciles, add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
+     boxplot(deciles[, 1:9], add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
              border='gray60', xpd=NA)
      legend('topleft', legend=c('Targets', 'Random'), fill=c('black', 'gray'))
      axis(side=1, at=1:9)
@@ -1097,7 +1097,7 @@ if(opts[['options']][['compare-paralog-kaks']]) {
 
      dev.off()
 
-    write.table(rbind(quantile(median_para_kaks[targeted], seq(0.1, 0.9, 0.1), na.rm=TRUE),
+    write.table(rbind(quantile(median_para_kaks[targeted], seq(0.1, 1, 0.1), na.rm=TRUE),
                       deciles),
                 file=paste0(outpre, '.kaks_paralog_comparison.deciles.tsv'),
                 sep='\t', col.names=FALSE, row.names=FALSE, quote=FALSE)
@@ -1173,7 +1173,7 @@ if(opts[['options']][['compare-expected-divergence']]) {
     n_strains_draw = table(osets[targeted, 'n_strains'])
     mrands = matrix(nrow=N, ncol=4)
     colnames(mrands) = c('p25', 'median', 'mean', 'p75')
-    mdeciles = matrix(nrow=N, ncol=9)
+    mdeciles = matrix(nrow=N, ncol=10)
     xrands = mrands
     xdeciles = mdeciles
     for(i in 1:N) {
@@ -1199,12 +1199,12 @@ if(opts[['options']][['compare-expected-divergence']]) {
         mrands[i, 'p75'] = quantile(r_med, 0.75)
         mrands[i, 'mean'] = mean(r_med)
         mrands[i, 'median'] = median(r_med)
-        mdeciles[i, ] = quantile(r_med, seq(0.1, 0.9, 0.1))
+        mdeciles[i, ] = quantile(r_med, seq(0.1, 1, 0.1))
         xrands[i, 'p25'] = quantile(r_max, 0.25)
         xrands[i, 'p75'] = quantile(r_max, 0.75)
         xrands[i, 'mean'] = mean(r_max)
         xrands[i, 'median'] = median(r_max)
-        xdeciles[i, ] = quantile(r_max, seq(0.1, 0.9, 0.1))
+        xdeciles[i, ] = quantile(r_max, seq(0.1, 1, 0.1))
     }
 
     par(mfcol=c(4, 2))
@@ -1249,7 +1249,7 @@ if(opts[['options']][['compare-expected-divergence']]) {
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='median exp. prot. div.', xlab='decile',
          main='expected divergence', xpd=NA)
-    boxplot(mdeciles, add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
+    boxplot(mdeciles[, 1:9], add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
             border='gray60', xpd=NA)
     legend('topleft', legend=c('Targets', 'Random'), fill=c('black', 'gray'))
     axis(side=1, at=1:9)
@@ -1260,7 +1260,7 @@ if(opts[['options']][['compare-expected-divergence']]) {
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='max. exp. prot. div.', xlab='decile',
          main='expected divergence', xpd=NA)
-    boxplot(xdeciles, add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
+    boxplot(xdeciles[, 1:9], add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
             border='gray60', xpd=NA)
     legend('topleft', legend=c('Targets', 'Random'), fill=c('black', 'gray'))
     axis(side=1, at=1:9)
@@ -1298,11 +1298,11 @@ if(opts[['options']][['compare-expected-divergence']]) {
 
     dev.off()
 
-    write.table(rbind(quantile(max_exp_div[targeted], seq(0.1, 0.9, 0.1)),
+    write.table(rbind(quantile(max_exp_div[targeted], seq(0.1, 1, 0.1)),
                       xdeciles),
                 file=paste0(outpre, '.expected_divergence_comparison.deciles.max.tsv'),
                 sep='\t', col.names=FALSE, row.names=FALSE, quote=FALSE)
-    write.table(rbind(quantile(median_exp_div[targeted], seq(0.1, 0.9, 0.1)),
+    write.table(rbind(quantile(median_exp_div[targeted], seq(0.1, 1, 0.1)),
                       mdeciles),
                 file=paste0(outpre, '.expected_divergence_comparison.deciles.median.tsv'),
                 sep='\t', col.names=FALSE, row.names=FALSE, quote=FALSE)
