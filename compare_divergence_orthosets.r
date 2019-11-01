@@ -24,6 +24,8 @@ optlist = list(
                            help='text file with list of genes to target; if not given, use symbiotic column'),
                make_option('--random-targets',
                            help='tsv file with lists of background genes, one list per column; if not given, background genes are matched on other characteristics'),
+               make_option('--included-targets',
+                           help='text file with list of genes to limit the analysis to'),
                make_option('--kaks',
                            help='pairwise Ka/Ks values'),
                make_option('--gene-id-column', default='subset',
@@ -84,6 +86,10 @@ if(opts[['options']][['compare-paralog-kaks']]) opts[['options']][['compare-kaks
 
 ## Read in data
 osets = rcv(orthofile)
+if(!is.null(opts[['options']][['included-targets']])) {
+    inc = scan(opts[['options']][['included-targets']], what='character', sep='\n')
+    osets = osets[osets[, gene_column] %in% inc, ]
+}
 strains = scan(strain_file, what='character', sep='\n')
 s = rcv(spp_file)
 species = structure(s[, 'species'], names=s[, 'strain'])
