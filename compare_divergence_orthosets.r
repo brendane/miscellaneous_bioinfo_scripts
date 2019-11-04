@@ -45,6 +45,8 @@ optlist = list(
                            help='Make plots comparing divergence of paralogs in targets and background'),
                make_option('--compare-kaks', type='logical', action='store_true', default=FALSE,
                            help='Make plots comparing pairwise Ka/Ks in targets and background'),
+               make_option('--compare-kaks-by-divergence', type='logical', action='store_true', default=FALSE,
+                           help='Make plots comparing pairwise Ka/Ks in targets and background'),
                make_option('--compare-paralog-kaks', type='logical', action='store_true', default=FALSE,
                            help='Make plots comparing pairwise Ka/Ks of paralogs in targets and background'),
                make_option('--compare-expected-divergence', type='logical', action='store_true', default=FALSE,
@@ -52,6 +54,8 @@ optlist = list(
 
                make_option('--protein-divergence-sampling-tolerance', type='double',
                            help='Tolerance for matching random gene sets in number of strains and exp. divergence (non-paralog prot. div, Ka/Ks)'),
+               make_option('--abs-protein-divergence-sampling-tolerance', type='double',
+                           help='Tolerance for matching random gene sets in number of strains and absolute divergence (Ka/Ks by divergence)'),
                make_option('--paralog-divergence-sampling-tolerance', type='double',
                            help='Tolerance for matching random gene sets in number of sequences and copy-number for paralog comparison')
                )
@@ -62,6 +66,7 @@ parser = OptionParser(option_list=optlist)
 opts = parse_args(parser, positional_arguments=TRUE)
 
 prot_div_tol = opts[['options']][['protein-divergence-sampling-tolerance']]
+abs_prot_div_tol = opts[['options']][['abs-protein-divergence-sampling-tolerance']]
 para_cn_ng_tol = opts[['options']][['paralog-divergence-sampling-tolerance']]
 
 orthofile = opts[['args']][1]   # tsv file with one line per gene set and summaries of annotation and divergence stats 'table/orthosets_data.73strains_alpha_complete.nopseudo.2019-07-31.tsv'
@@ -790,6 +795,7 @@ if(opts[['options']][['compare-kaks']]) {
     op = par(no.readonly=TRUE)
 
     median_kaks = osets[, 'median_kaks']
+    max_kaks = osets[, 'max_kaks']
     lmedian_kaks = log2(median_kaks)
     lmedian_kaks[is.infinite(lmedian_kaks)] =
     min(lmedian_kaks[!is.infinite(lmedian_kaks)], na.rm=TRUE) * 1.1
@@ -859,10 +865,12 @@ if(opts[['options']][['compare-kaks']]) {
     lrands = rands
     deciles = matrix(nrow=N, ncol=10)
     ldeciles = deciles
+    xdeciles = deciles
     for(i in 1:N) {
         if(is.null(background)) {
             r = numeric(ngenes)
             lr = numeric(ngenes)
+            xr = numeric(ngenes)
             for(j in seq_along(n_genes_draw)) {
                 ng = n_genes_draw[j]
                 de = med_exp_draw[j]
@@ -880,10 +888,12 @@ if(opts[['options']][['compare-kaks']]) {
                 osets[, 'n_genes'] >= ng * (1-prot_div_tol)
                 r[j] = sample(median_kaks[choices], 1)
                 lr[j] = sample(lmedian_kaks[choices], 1)
+                xr[j] = sample(max_kaks[choices], 1)
             }
         } else {
             r = median_kaks[osets[, gene_column] %in% background[, i]]
             lr = lmedian_kaks[osets[, gene_column] %in% background[, i]]
+            xr = max_kaks[osets[, gene_column] %in% background[, i]]
         }
         rands[i, 'p25'] = quantile(r, 0.25, na.rm=TRUE)
         rands[i, 'p75'] = quantile(r, 0.75, na.rm=TRUE)
@@ -895,6 +905,7 @@ if(opts[['options']][['compare-kaks']]) {
         lrands[i, 'mean'] = mean(lr, na.rm=TRUE)
         lrands[i, 'median'] = median(lr, na.rm=TRUE)
         ldeciles[i, ] = quantile(lr, seq(0.1, 1, 0.1), na.rm=TRUE)
+        xdeciles[i, ] = quantile(xr, seq(0.1, 1, 0.1), na.rm=TRUE)
     }
 
     par(mfcol=c(4, 2))
@@ -961,6 +972,206 @@ if(opts[['options']][['compare-kaks']]) {
     write.table(rbind(quantile(median_kaks[targeted], seq(0.1, 1, 0.1), na.rm=TRUE),
                       deciles),
                 file=paste0(outpre, '.kaks_comparison.deciles.tsv'),
+                sep='\t', col.names=FALSE, row.names=FALSE, quote=FALSE)
+
+    write.table(rbind(quantile(max_kaks[targeted], seq(0.1, 1, 0.1), na.rm=TRUE),
+                      xdeciles),
+                file=paste0(outpre, '.kaks_comparison.maxdeciles.tsv'),
+                sep='\t', col.names=FALSE, row.names=FALSE, quote=FALSE)
+}
+
+
+if(opts[['options']][['compare-kaks-by-divergence']]) {
+    ## Compare pairwise Ka/Ks values of target genes to the background.
+    ## Pairs of sequences within a gene that are too diverged to get a Ks
+    ## or Ka value are just ignored.
+    ## Use absolute divergence to choose random samples.
+    pdf(paste0(outpre, '.kaks_abs_div_comparison.pdf'), width=8, height=8, useDingbats=FALSE)
+    op = par(no.readonly=TRUE)
+
+    median_kaks = osets[, 'median_kaks']
+    max_kaks = osets[, 'max_kaks']
+    lmedian_kaks = log2(median_kaks)
+    lmedian_kaks[is.infinite(lmedian_kaks)] =
+    min(lmedian_kaks[!is.infinite(lmedian_kaks)], na.rm=TRUE) * 1.1
+    M = ceiling(max(median_kaks, na.rm=TRUE))
+    n = floor(min(median_kaks, na.rm=TRUE))
+    lM = ceiling(max(lmedian_kaks, na.rm=TRUE))
+    ln = floor(min(lmedian_kaks, na.rm=TRUE))
+
+    ## Distribution of median pairwise protein distance
+    ## Note that NA's are orthosets with only one gene or one strain
+    par(mfrow=c(2, 1))
+    hist(median_kaks,
+         col='gray', border='white', xaxs='i', yaxs='i', cex.lab=1.5,
+         cex.axis=1.5, main='All genes',
+         ylab='# genes',
+         xlab='', breaks=seq(0, M, 0.05),
+         mar=c(2.1, 4.1, 3.1, 2.1))
+    s = summary(median_kaks)
+    text(M/2, par('usr')[4]*0.6,
+         paste(mapply(function(x, y) paste(x, y, sep=':  '), names(s), round(s, 1)), collapse='\n'))
+    hist(median_kaks[targeted],
+         col='gray', border='white', xaxs='i', yaxs='i', cex.lab=1.5,
+         cex.axis=1.5, main='Target genes',
+         ylab='# genes',
+         xlab='median Ka/Ks',
+         breaks=seq(0, M, 0.05),
+         mar=c(4.1, 4.1, 3.1, 2.1))
+    s = summary(median_kaks[targeted])
+    text(M/2, par('usr')[4]*0.6,
+         paste(mapply(function(x, y) paste(x, y, sep=':  '), names(s), round(s, 1)), collapse='\n'))
+    par(op)
+
+    par(mfrow=c(2, 1))
+    hist(lmedian_kaks,
+         col='gray', border='white', xaxs='i', yaxs='i', cex.lab=1.5,
+         cex.axis=1.5, main='All genes',
+         ylab='# genes',
+         xlab='', breaks=seq(ln, lM, 0.5),
+         mar=c(2.1, 4.1, 3.1, 2.1))
+    s = summary(lmedian_kaks)
+    text(-5, par('usr')[4]*0.6,
+         paste(mapply(function(x, y) paste(x, y, sep=':  '), names(s), round(s, 1)), collapse='\n'))
+    hist(lmedian_kaks[targeted],
+         col='gray', border='white', xaxs='i', yaxs='i', cex.lab=1.5,
+         cex.axis=1.5, main='Target genes',
+         ylab='# genes',
+         xlab='log2(median Ka/Ks)',
+         breaks=seq(ln, lM, 0.5),
+         mar=c(4.1, 4.1, 3.1, 2.1))
+    s = summary(lmedian_kaks[targeted])
+    text(-5, par('usr')[4]*0.6,
+         paste(mapply(function(x, y) paste(x, y, sep=':  '), names(s), round(s, 1)), collapse='\n'))
+    par(op)
+
+    ## Compare target genes to random draws.
+    ## The matching method here does not try to avoid sampling the same background
+    ## gene more than once per draw.
+    par(mfrow=c(4, 2))
+    tol = 0.25
+    ngenes = sum(targeted)
+    n_genes_draw = osets[targeted, 'n_genes']
+    med_div_draw = osets[targeted, 'median']
+    min_div_draw = osets[targeted, 'min']
+    max_div_draw = osets[targeted, 'max']
+    rands = matrix(nrow=N, ncol=4)
+    colnames(rands) = c('p25', 'median', 'mean', 'p75')
+    lrands = rands
+    deciles = matrix(nrow=N, ncol=10)
+    ldeciles = deciles
+    xdeciles = deciles
+    for(i in 1:N) {
+        if(is.null(background)) {
+            r = numeric(ngenes)
+            lr = numeric(ngenes)
+            xr = numeric(ngenes)
+            for(j in seq_along(n_genes_draw)) {
+                ng = n_genes_draw[j]
+                de = med_div_draw[j]
+                ne = min_div_draw[j]
+                xe = max_div_draw[j]
+                choices =
+                !targeted &
+                osets[, 'median'] <= de * (1+abs_prot_div_tol) &
+                osets[, 'median'] >= de * (1-abs_prot_div_tol) &
+                osets[, 'min'] <= ne * (1+abs_prot_div_tol) &
+                osets[, 'min'] >= ne * (1-abs_prot_div_tol) &
+                osets[, 'max'] <= xe * (1+abs_prot_div_tol) &
+                osets[, 'max'] >= xe * (1-abs_prot_div_tol) &
+                osets[, 'n_genes'] <= ng * (1+abs_prot_div_tol) &
+                osets[, 'n_genes'] >= ng * (1-abs_prot_div_tol)
+                r[j] = sample(median_kaks[choices], 1)
+                lr[j] = sample(lmedian_kaks[choices], 1)
+                xr[j] = sample(max_kaks[choices], 1)
+            }
+        } else {
+            r = median_kaks[osets[, gene_column] %in% background[, i]]
+            lr = lmedian_kaks[osets[, gene_column] %in% background[, i]]
+            xr = max_kaks[osets[, gene_column] %in% background[, i]]
+        }
+        rands[i, 'p25'] = quantile(r, 0.25, na.rm=TRUE)
+        rands[i, 'p75'] = quantile(r, 0.75, na.rm=TRUE)
+        rands[i, 'mean'] = mean(r, na.rm=TRUE)
+        rands[i, 'median'] = median(r, na.rm=TRUE)
+        deciles[i, ] = quantile(r, seq(0.1, 1, 0.1), na.rm=TRUE)
+        lrands[i, 'p25'] = quantile(lr, 0.25, na.rm=TRUE)
+        lrands[i, 'p75'] = quantile(lr, 0.75, na.rm=TRUE)
+        lrands[i, 'mean'] = mean(lr, na.rm=TRUE)
+        lrands[i, 'median'] = median(lr, na.rm=TRUE)
+        ldeciles[i, ] = quantile(lr, seq(0.1, 1, 0.1), na.rm=TRUE)
+        xdeciles[i, ] = quantile(xr, seq(0.1, 1, 0.1), na.rm=TRUE)
+    }
+
+    par(mfcol=c(4, 2))
+    hist(rands[, 'p25'], col='gray', border='white', xlab='',
+         ylab='# genes', main='25th percentile', breaks=seq(0, M, 0.1),
+         xaxs='i', yaxs='i')
+    abline(v=quantile(median_kaks[targeted], 0.25, na.rm=TRUE))
+    hist(rands[, 'median'], col='gray', border='white', xlab='',
+         ylab='# genes', main='median', breaks=seq(0, M, 0.1),
+         xaxs='i', yaxs='i')
+    abline(v=median(median_kaks[targeted], na.rm=TRUE))
+    hist(rands[, 'mean'], col='gray', border='white', xlab='',
+         ylab='# genes', main='mean', breaks=seq(0, M, 0.1),
+         xaxs='i', yaxs='i')
+    abline(v=mean(median_kaks[targeted], na.rm=TRUE))
+    hist(rands[, 'p75'], col='gray', border='white', xlab='median Ka/Ks',
+         ylab='# genes', main='75th percentile', breaks=seq(0, M, 0.1),
+         xaxs='i', yaxs='i')
+    abline(v=quantile(median_kaks[targeted], 0.75, na.rm=TRUE))
+    hist(lrands[, 'p25'], col='gray', border='white', xlab='',
+         ylab='# genes', main='25th percentile', breaks=seq(ln, lM, 0.1),
+         xaxs='i', yaxs='i')
+    abline(v=quantile(lmedian_kaks[targeted], 0.25, na.rm=TRUE))
+    hist(lrands[, 'median'], col='gray', border='white', xlab='',
+         ylab='# genes', main='median', breaks=seq(ln, lM, 0.1),
+         xaxs='i', yaxs='i')
+    abline(v=median(lmedian_kaks[targeted], na.rm=TRUE))
+    hist(lrands[, 'mean'], col='gray', border='white', xlab='',
+         ylab='# genes', main='mean', breaks=seq(ln, lM, 0.1),
+         xaxs='i', yaxs='i')
+    abline(v=mean(lmedian_kaks[targeted], na.rm=TRUE))
+    hist(lrands[, 'p75'], col='gray', border='white', xlab='median Ka/Ks',
+         ylab='# genes', main='75th percentile', breaks=seq(ln, lM, 0.1),
+         xaxs='i', yaxs='i')
+    abline(v=quantile(lmedian_kaks[targeted], 0.75, na.rm=TRUE))
+    par(op)
+
+
+    plot(quantile(median_kaks[targeted], seq(0.1, 0.9, 0.1), na.rm=TRUE),
+         pch=19, cex=1.5, col='black', ylim=c(0, max(deciles[, 9])*1.1), bty='n',
+         xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
+         ylab='median Ka/Ks', xlab='decile',
+         main='KaKs', xpd=NA)
+    boxplot(deciles[, 1:9], add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
+            border='gray60', xpd=NA)
+    legend('topleft', legend=c('Targets', 'Random'), fill=c('black', 'gray'))
+    axis(side=1, at=1:9)
+    par(op)
+
+
+    plot(quantile(lmedian_kaks[targeted], seq(0.1, 0.9, 0.1), na.rm=TRUE),
+         pch=19, cex=1.5, col='black', ylim=c(ln, lM), bty='n',
+         xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
+         ylab='log2(median kaks)', xlab='decile',
+         main='KaKs', xpd=NA)
+    boxplot(ldeciles[, 1:9], add=TRUE, xaxt='n', frame=FALSE, yaxt='n', col='gray',
+            border='gray60', xpd=NA)
+    legend('topleft', legend=c('Targets', 'Random'), fill=c('black', 'gray'))
+    axis(side=1, at=1:9)
+    par(op)
+
+    dev.off()
+
+    write.table(rbind(quantile(median_kaks[targeted], seq(0.1, 1, 0.1), na.rm=TRUE),
+                      deciles),
+                file=paste0(outpre, '.kaks_abs_div_comparison.deciles.tsv'),
+                sep='\t', col.names=FALSE, row.names=FALSE, quote=FALSE)
+
+    write.table(rbind(quantile(max_kaks[targeted], seq(0.1, 1, 0.1), na.rm=TRUE),
+                      xdeciles),
+                file=paste0(outpre, '.kaks_abs_div_comparison.maxdeciles.tsv'),
                 sep='\t', col.names=FALSE, row.names=FALSE, quote=FALSE)
 }
 
