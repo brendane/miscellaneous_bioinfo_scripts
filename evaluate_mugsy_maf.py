@@ -3,7 +3,7 @@
     Evaluate a MAF file from mugsy.
 
     evaluate_mugsy_maf.py --output <output prefix> <input maf file>
-        <fai directory> <gff directory>
+        <fai directory> <gff directory> [<comma separated list of strains>]
 
     Assumes no whitespace in the sequences.
 """
@@ -59,7 +59,7 @@ all_strains = set()
 if args.strains is None:
     n_strains = len(os.listdir(args.fai))
 else:
-    n_strains = len(args.strains.strip().split(','))
+    n_strains = len(args.strains[0].strip().split(','))
 
 for rec in parse_maf(args.maf):
     names = list(rec['s'].keys())
@@ -129,7 +129,7 @@ for strain in all_strains:
     t = 0
     for l in sorted(lcb_strain_ungapped_lengths[strain], reverse=True):
         t += l
-        if t > n_sites / 2:
+        if t > n_sites_strains[strain] / 2:
             n50_strains[strain] = l # N50 for a particular strain
             break
 
@@ -150,9 +150,9 @@ for strain in all_strains:
                           args.gff + '/' + strain + '.gff3'],
                          stdout=subprocess.PIPE)
     x = p.communicate()[0].decode('utf-8').split('\n')
+    os.unlink(tmp)
     #with open(args.output + '.lcb_boundary_features.' + strain + '.bed', 'wt') as oh:
     #    oh.write('\n'.join(x) + '\n')
-    #os.unlink(tmp)
     strain_cut_genes[strain] = len(x)
 
 with open(args.output + '.stats.tsv', 'wt') as oh:
@@ -163,7 +163,10 @@ with open(args.output + '.stats.tsv', 'wt') as oh:
     oh.write('ALL\tn_core_lcbs\t' + str(n_core_lcbs) + '\t' +
              'Number of LCBs with all strains present\n')
     oh.write('ALL\tn_multiallelic_sites\t' + str(n_multiallelic_sites) +
-             '\tNumber of sites with > 2 non-gap alleles\n')
+             '\tNumber of LCB sites with > 2 non-gap alleles\n')
+    oh.write('ALL\tproportion_multiallelic_sites\t' +
+             str(n_multiallelic_sites / n_sites) +
+             '\tProportion of LCB sites with > 2 non-gap alleles\n')
     oh.write('ALL\tcore_bp\t' + str(n_core_sites) + '\t' +
              'Number of sites with all strains present\n')
     oh.write('ALL\tn_ungapped_sites\t' + str(n_ungapped_sites) +
@@ -174,8 +177,11 @@ with open(args.output + '.stats.tsv', 'wt') as oh:
              str(n_core_sites / n_sites) +
              '\tNumber of core bp divided by total\n')
     for strain in all_strains:
-        oh.write(strain + '\tN50\t' + str(n50_strains[strain]) +
-                 '\tN50 for %s\n' % strain)
+        try:
+            oh.write(strain + '\tN50\t' + str(n50_strains[strain]) +
+                     '\tN50 for %s\n' % strain)
+        except:
+            import pdb; pdb.set_trace()
         oh.write(strain + '\tn_sites\t' + str(n_sites_strains[strain]) +
                  '\tNumber of sites included from %s\n' % strain)
         oh.write(strain + '\tproportion_included\t' +
