@@ -5,12 +5,12 @@ import sys
 import dendropy
 
 tree_str = ''
-with open(sys.argv[1], 'rb') as ih:
+with open(sys.argv[1], 'rt') as ih:
     for line in ih:
         tree_str += line.strip()
 
 include = []
-with open(sys.argv[2], 'rb') as ih:
+with open(sys.argv[2], 'rt') as ih:
     for line in ih:
         include.append(line.strip())
 
