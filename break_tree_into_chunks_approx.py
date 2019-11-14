@@ -67,7 +67,7 @@ for node in tree.preorder_node_iter():
     if skip: continue
     if len(tips) <= args.chunk:
         chunks.append(tips)
-    elif len(tips) <= args.chunk * 5:
+    elif len(tips) <= args.chunk * 10:
         md = 0
         for t1 in tree.taxon_namespace.findall(list(tips)):
             for t2 in tree.taxon_namespace.findall(list(tips)):
