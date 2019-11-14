@@ -2,13 +2,18 @@
 """
     Get a consensus sequence from an MAF file.
 
-    consensus_from_maf.py <input file>
+    consensus_from_maf.py [<input file>]
 """
 
 import collections
 import sys
 
-with open(sys.argv[1], 'rt') as ih:
+if len(sys.argv) > 1:
+    h = open(sys.argv[1], 'rt')
+else:
+    h = sys.stdin
+
+with h as ih:
     annots = {}
     counters = []
     for line in ih:

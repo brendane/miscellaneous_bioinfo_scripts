@@ -106,7 +106,7 @@ for rec in parse_maf(args.maf):
             s = n[4] - n[1] - n[2] - 1
             e = s + 1
             ee = n[4] - n[1]
-            ss = n[4] - n[1] - n[2] - 1
+            ss = n[4] - n[1] - n[2]
         lcb_boundaries[strain].append((replicon, s, e))
         lcb_bed[strain].append((replicon, ss, ee))
 
