@@ -46,5 +46,9 @@ with h as ih:
             else:
                 data.append(line)
     if len(data) > 0 and keep:
-        for l in data:
+        if args.relabel_by_number:
+            sys.stdout.write('a label=%i\n' % label_num)
+        else:
+            sys.stdout.write(data[0])
+        for l in data[1:]:
             sys.stdout.write(l)
