@@ -8,7 +8,6 @@
 
 import argparse
 import collections
-import multiprocessing
 
 from Bio import Seq
 
@@ -32,13 +31,28 @@ def parse_maf(ih, print_line=False, handle=None):
             continue
     yield record
 
-def get_matching_coords(inpt):
-    maf_file, seq_name = inpt.split(':')
+parser = argparse.ArgumentParser(usage=__doc__)
+parser.add_argument('--output')
+parser.add_argument('maf')
+parser.add_argument('inputs', nargs='+')
+args = parser.parse_args()
+
+## Goal:
+## MAF file with coordinates of individual genomes
+
+## 1. Map between consensus coordinates and individual genome coordinates
+##    args.inputs = batch_0:results/.../round1-batch.0/processed.maf
+## Do this for each seq_name separately to parallelize
+full_coords = {}
+contig_lengths = {}
+individual_contigs = collections.defaultdict(list)
+for seq_name, maf_file in map(lambda x: x.split(':'), args.inputs):
     coords = {} # consensus position: genome_position, direction, base
     with open(maf_file, 'rt') as handle:
         for rec in parse_maf(handle):
             label = rec['a']['label']
             length = len(rec['s'][0].seq)
+            print(seq_name, label)
             for i in range(length):
                 # i = consensus position
                 coords[(seq_name + '.' + label, i)] = {}
@@ -57,36 +71,12 @@ def get_matching_coords(inpt):
                     else:
                         coords[(seq_name + '.' + label, i)][srec.seq_name] = (j, direction, srec.seq[i])
                         j += direction
-    return (seq_name, coords)
-
-
-parser = argparse.ArgumentParser(usage=__doc__)
-parser.add_argument('--output')
-parser.add_argument('--nthreads', default=1, type=int)
-parser.add_argument('maf')
-parser.add_argument('inputs', nargs='+')
-args = parser.parse_args()
-
-## Goal:
-## MAF file with coordinates of individual genomes
-
-## 1. Map between consensus coordinates and individual genome coordinates
-##    args.inputs = batch_0:results/.../round1-batch.0/processed.maf
-full_coords = {}
-contig_lengths = {}
-individual_contigs = collections.defaultdict(list)
-results = []
-with multiprocessing.Pool(processes=args.nthreads) as pool:
-    results = pool.map(get_matching_coords, args.inputs)
-    #for seq_name, maf_file in map(lambda x: x.split(':'), args.inputs):
-    #    #full_coords[seq_name] = get_matching_coords(maf_file)
-    #    results.append((seq_name, pool.apply_async(get_matching_coords, (maf_file, seq_name))))
-full_coords = {s:r for s, r in results}
-print('Done getting coords')
+    full_coords[seq_name] = coords
 
 
 ## 2. Walk through alignment of consensuses, substituting in the
 ##    coordinates and bases from the individual genomes
+## Do this for ind_seq_name separately to parallelize
 with open(args.output, 'wt') as oh:
     with open(args.maf, 'rt') as handle:
 
@@ -151,3 +141,5 @@ with open(args.output, 'wt') as oh:
                                  '\t' + sequence + '\n')
 
             oh.write('\n')
+
+## 3. Merge all the individual components together if parallelized

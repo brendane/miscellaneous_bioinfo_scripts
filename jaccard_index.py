@@ -9,10 +9,13 @@
 import argparse
 import collections
 import csv
+import gzip
 import sys
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--min-strains', default=0, type=int)
+parser.add_argument('--vcf', default=False, action='store_true')
+parser.add_argument('--zero', default=False, action='store_true')
 parser.add_argument('input')
 parser.add_argument('column')
 parser.add_argument('genes', nargs='*', default=[])
@@ -26,12 +29,25 @@ if len(args.genes):
 
 shared = collections.defaultdict(int)
 total = collections.defaultdict(int)
-with open(args.input, 'rt') as ih:
-    rdr = csv.DictReader(filter(lambda x: not x.startswith('#'), ih), delimiter='\t')
+op = open
+if args.input.endswith('.gz'): op = gzip.open
+with op(args.input, 'rt') as ih:
+    if args.vcf:
+        rdr = csv.DictReader(filter(lambda x: not x.startswith('##'), ih), delimiter='\t')
+    else:
+        rdr = csv.DictReader(filter(lambda x: not x.startswith('#'), ih), delimiter='\t')
     for i, row in enumerate(rdr):
-        if len(args.genes) > 0 and row[args.genes[1]] not in keep:
-            continue
-        groups = row[args.column].split(',')
+        if args.vcf:
+            if len(args.genes) > 0 and row['ID'] not in keep:
+                continue
+            p = '1'
+            if args.zero:
+                p = '0'
+            groups = [strain for strain in rdr.fieldnames[9:] if row[strain] == p]
+        else:
+            if len(args.genes) > 0 and row[args.genes[1]] not in keep:
+                continue
+            groups = row[args.column].split(',')
         if len(groups) < args.min_strains:
             continue
         for g1 in groups:

@@ -7,6 +7,7 @@
 
     --orthogroups3: Input is Orthogroups.tsv from OrthoFinder v2.3 (or higher)
         instead of an orthoset table.
+    --no-align: Don't align the descriptions to make a consensus description
 """
 
 import argparse
@@ -74,6 +75,7 @@ def get_consensus_description(descriptions, tempin):
 
 parser = argparse.ArgumentParser(usage=__doc__)
 parser.add_argument('--orthogroups3', default=False, action='store_true')
+parser.add_argument('--no-align', default=False, action='store_true')
 parser.add_argument('orthotable')
 parser.add_argument('annotation')
 parser.add_argument('refs', nargs='?')
@@ -124,8 +126,10 @@ with open(args.orthotable, 'rt') as ih:
             for ref in refs:
                 if gene.startswith(ref + '_'):
                     ref_genes[ref].append(gene)
-        if len(descriptions) > 1:
+        if len(descriptions) > 1 and not args.no_align:
             consensus_description = get_consensus_description(descriptions, tin)
+        elif len(descriptions) > 1 and args.no_align:
+            consensus_description = collections.Counter(descriptions).most_common()[0][0]
         else:
             consensus_description = descriptions[0]
         sys.stdout.writelines([OG, '\t', SS, '\t',

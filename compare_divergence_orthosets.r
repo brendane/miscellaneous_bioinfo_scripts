@@ -317,7 +317,7 @@ if(opts[['options']][['compare-copy-number']]) {
 
 
     plot(quantile(mean_copy_number[targeted], seq(0.1, 0.9, 0.1)),
-         pch=19, cex=1.5, col='black', ylim=c(0.9, max(mean_copy_number[targeted], max(deciles))), bty='n',
+         pch=19, cex=1.5, col='black', ylim=c(0.9, max(mean_copy_number[targeted], max(deciles, na.rm=TRUE), na.rm=TRUE)), bty='n',
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='mean copy number', xlab='decile',
          main='copy number', xpd=NA)
@@ -455,7 +455,7 @@ if(opts[['options']][['compare-protein-divergence']]) {
 
 
     plot(quantile(median_prot_dist[targeted], seq(0.1, 0.9, 0.1), na.rm=TRUE),
-         pch=19, cex=1.5, col='black', ylim=c(0, max(deciles[, 9])*1.1), bty='n',
+         pch=19, cex=1.5, col='black', ylim=c(0, max(deciles[, 9], na.rm=TRUE)*1.1), bty='n',
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='median pairwise protein distance', xlab='decile',
          main='divergence', xpd=NA)
@@ -630,7 +630,7 @@ if(opts[['options']][['compare-relative-protein-divergence']]) {
 
 
     plot(quantile(median_rel_prot_dist[targeted], seq(0.1, 0.9, 0.1), na.rm=TRUE),
-         pch=19, cex=1.5, col='black', ylim=c(0, max(deciles[, 9])*1.1), bty='n',
+         pch=19, cex=1.5, col='black', ylim=c(0, max(deciles[, 9], na.rm=TRUE)*1.1), bty='n',
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='median relative pairwise protein distance', xlab='decile',
          main='relative divergence', xpd=NA)
@@ -752,7 +752,7 @@ if(opts[['options']][['compare-paralog-protein-divergence']]) {
 
 
     plot(quantile(median_para_prot_dist[targeted], seq(0.1, 0.9, 0.1), na.rm=TRUE),
-         pch=19, cex=1.5, col='black', ylim=c(0, max(deciles[, 9])*1.1), bty='n',
+         pch=19, cex=1.5, col='black', ylim=c(0, max(deciles[, 9], na.rm=TRUE)*1.1), bty='n',
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='median pairwise protein distance b/n duplications', xlab='decile',
          main='divergence between paralogs', xpd=NA)
@@ -945,7 +945,7 @@ if(opts[['options']][['compare-kaks']]) {
 
 
     plot(quantile(median_kaks[targeted], seq(0.1, 0.9, 0.1), na.rm=TRUE),
-         pch=19, cex=1.5, col='black', ylim=c(0, max(deciles[, 9])*1.1), bty='n',
+         pch=19, cex=1.5, col='black', ylim=c(0, max(deciles[, 9], na.rm=TRUE)*1.1), bty='n',
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='median Ka/Ks', xlab='decile',
          main='KaKs', xpd=NA)
@@ -1140,7 +1140,7 @@ if(opts[['options']][['compare-kaks-by-divergence']]) {
 
 
     plot(quantile(median_kaks[targeted], seq(0.1, 0.9, 0.1), na.rm=TRUE),
-         pch=19, cex=1.5, col='black', ylim=c(0, max(deciles[, 9])*1.1), bty='n',
+         pch=19, cex=1.5, col='black', ylim=c(0, max(deciles[, 9], na.rm=TRUE)*1.1), bty='n',
          xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
          ylab='median Ka/Ks', xlab='decile',
          main='KaKs', xpd=NA)
@@ -1272,7 +1272,7 @@ if(opts[['options']][['compare-paralog-kaks']]) {
 
 
      plot(quantile(median_para_kaks[targeted], seq(0.1, 0.9, 0.1), na.rm=TRUE),
-          pch=19, cex=1.5, col='black', ylim=c(0, max(deciles[, 9])*1.1), bty='n',
+          pch=19, cex=1.5, col='black', ylim=c(0, max(deciles[, 9], na.rm=TRUE)*1.1), bty='n',
           xaxs='i', yaxs='i', xaxt='n', type='b', xlim=c(0, 10),
           ylab='median pairwise KaKs b/n duplications', xlab='decile',
           main='Ka/Ks between paralogs', xpd=NA)
